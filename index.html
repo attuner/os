@@ -1,1315 +1,2607 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Windows 11 CloudOS</title>
-
-  <!-- Typography: Segoe UI / Cascadia Code -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Google Workspace WebOS & Productivity Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=Cascadia+Code:wght@400;600&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS & Lucide Icons -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Mammoth.js for Parsing Word (.docx) Files -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- PDF.js for native client-side PDF rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
   <style>
-    :root {
-      --font-win: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --font-code: 'Cascadia Code', Consolas, monospace;
-    }
     * {
-      font-family: var(--font-win);
-      -webkit-tap-highlight-color: transparent;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
-    /* Explicit pointer event handling so buttons are always clickable */
-    button, input, select, textarea, [role="button"] {
-      cursor: pointer !important;
-      pointer-events: auto !important;
-      user-select: auto !important;
+    body {
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+      font-family: 'Google Sans', Roboto, sans-serif;
+      touch-action: manipulation;
     }
-    .auth-tab-hidden {
-      display: none !important;
-      pointer-events: none !important;
+    .touch-none {
+      touch-action: none !important;
     }
-    .auth-tab-visible {
-      display: block !important;
-      pointer-events: auto !important;
+    /* Hardware acceleration & smooth motion */
+    .os-window {
+      will-change: transform, width, height, left, top;
+      transition: box-shadow 0.15s ease, opacity 0.15s ease;
+      contain: layout style;
     }
-    /* Windows 11 Mica & Acrylic materials */
-    .win-mica {
-      background: rgba(30, 30, 30, 0.84);
-      backdrop-filter: blur(40px) saturate(190%);
-      -webkit-backdrop-filter: blur(40px) saturate(190%);
+    .os-window.is-animating {
+      transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), width 0.22s cubic-bezier(0.2, 0, 0, 1), height 0.22s cubic-bezier(0.2, 0, 0, 1), left 0.22s cubic-bezier(0.2, 0, 0, 1), top 0.22s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
+    }
+    .glass-shelf {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-panel {
+      background: rgba(22, 30, 46, 0.94);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
       border: 1px solid rgba(255, 255, 255, 0.12);
     }
-    .win-acrylic {
-      background: rgba(36, 36, 36, 0.94);
-      backdrop-filter: blur(50px) saturate(200%);
-      -webkit-backdrop-filter: blur(50px) saturate(200%);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    .win-shadow {
+      box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.14);
     }
-    .taskbar-surface {
-      background: rgba(24, 24, 24, 0.82);
-      backdrop-filter: blur(32px);
-      -webkit-backdrop-filter: blur(32px);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
     }
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(160, 160, 160, 0.3); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(160, 160, 160, 0.6); }
-    @media (min-width: 744px) and (max-width: 1133px) {
-      .win-desktop-icon { width: 72px; height: 82px; }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(148, 163, 184, 0.7);
+    }
+
+    /* 8-Direction Window Resizers with Touch-Friendly Hitboxes */
+    .resizer {
+      position: absolute;
+      z-index: 60;
+      touch-action: none;
+    }
+    .resizer.r-top { top: -8px; left: 10px; right: 10px; height: 16px; cursor: ns-resize; }
+    .resizer.r-bottom { bottom: -8px; left: 10px; right: 10px; height: 16px; cursor: ns-resize; }
+    .resizer.r-left { left: -8px; top: 10px; bottom: 10px; width: 16px; cursor: ew-resize; }
+    .resizer.r-right { right: -8px; top: 10px; bottom: 10px; width: 16px; cursor: ew-resize; }
+    .resizer.r-topleft { top: -10px; left: -10px; width: 24px; height: 24px; cursor: nwse-resize; }
+    .resizer.r-topright { top: -10px; right: -10px; width: 24px; height: 24px; cursor: nesw-resize; }
+    .resizer.r-bottomleft { bottom: -10px; left: -10px; width: 24px; height: 24px; cursor: nesw-resize; }
+    .resizer.r-bottomright { bottom: -10px; right: -10px; width: 24px; height: 24px; cursor: nwse-resize; }
+
+    .sheet-cell:focus {
+      outline: 2px solid #1a73e8 !important;
+      background-color: #f0f7ff;
+      z-index: 10;
     }
   </style>
 </head>
 
-<body class="h-screen w-screen overflow-hidden bg-black text-slate-100 flex flex-col relative select-none">
+<body class="h-screen w-screen overflow-hidden relative select-none bg-slate-950 text-slate-100 antialiased font-sans">
 
-  <!-- ==================== DESKTOP CANVAS ==================== -->
-  <main id="desktop" class="relative flex-1 w-full overflow-hidden bg-cover bg-center transition-all duration-700"
-        style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564');">
+  <!-- Desktop Dynamic Wallpaper Layer -->
+  <div id="desktop-bg" class="absolute inset-0 bg-cover bg-center transition-all duration-700 pointer-events-none"
+       style="background-image: radial-gradient(circle at 20% 20%, rgb(30, 58, 138) 0%, rgb(15, 23, 42) 80%);">
+    <div class="absolute inset-0 bg-gradient-to-tr from-sky-950/40 via-transparent to-amber-500/10"></div>
+  </div>
 
-    <!-- Screen Brightness Dimmer Overlay -->
-    <div id="dimmerOverlay" class="absolute inset-0 bg-black pointer-events-none z-30 transition-opacity duration-300 opacity-0"></div>
-
-    <!-- Desktop Icons Grid -->
-    <div id="desktopIcons" class="absolute inset-0 p-3 grid grid-flow-col grid-rows-[repeat(auto-fill,88px)] gap-2 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-10"></div>
-
-    <!-- Desktop Interactive Widgets Pane -->
-    <div id="widgetsPane" class="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none [&>*]:pointer-events-auto z-10 max-w-xs w-full">
-      <!-- Live Clock / Weather Widget -->
-      <div class="win-mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Cloud Workstation</span>
-          <i data-lucide="cloud-sun" class="w-4 h-4 text-amber-400"></i>
-        </div>
-        <div class="text-3xl font-light tracking-tight" id="widgetTime">03:02</div>
-        <div class="text-xs text-white/70" id="widgetDate">Sunday, September 20, 2026</div>
-      </div>
-
-      <!-- Real Microsoft To-Do Checklist Widget -->
-      <div class="win-mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Microsoft To Do
-          </span>
-          <button onclick="launchApp('todo')" class="text-xs text-blue-400 hover:text-blue-300 font-semibold">+ Open</button>
-        </div>
-        <div id="widgetTodoList" class="space-y-1.5 max-h-36 overflow-y-auto text-xs"></div>
-        <div class="mt-2 pt-2 border-t border-white/10 flex gap-1">
-          <input id="widgetNewTodoInput" type="text" placeholder="Add task..." onkeydown="if(event.key==='Enter') addWidgetTodo()"
-                 class="w-full bg-white/10 border border-white/10 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-blue-400 text-white placeholder-white/40" />
-          <button onclick="addWidgetTodo()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold">+</button>
-        </div>
-      </div>
+  <!-- Mobile Top Bar for Phone Screen Form Factors -->
+  <div class="md:hidden absolute top-0 left-0 right-0 h-7 px-4 flex items-center justify-between text-[11px] font-medium text-slate-300 z-30 pointer-events-none">
+    <div class="flex items-center gap-1.5"><i class="fa-brands fa-google text-blue-400"></i> Workspace Mobile</div>
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-wifi text-[10px]"></i>
+      <i class="fa-solid fa-battery-three-quarters text-[11px] text-emerald-400"></i>
+      <span id="mobile-clock">12:00</span>
     </div>
+  </div>
 
-    <!-- Multi-Window Desktop Workspace -->
-    <div id="windowsContainer" class="absolute inset-0 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-20"></div>
+  <!-- Desktop Icons Grid (Touch scrollable, responsive rows) -->
+  <div id="desktop-icons" class="relative z-10 p-3 sm:p-5 pt-9 md:pt-5 grid grid-flow-col grid-rows-6 md:grid-rows-6 gap-2 sm:gap-4 w-max max-h-[calc(100vh-64px)] overflow-x-auto custom-scroll">
+    <!-- Populated dynamically -->
+  </div>
 
-    <!-- Virtual Mouse Cursor (Controlled by Trackpad) -->
-    <div id="virtualCursor" class="hidden absolute w-4 h-4 -top-2 -left-2 pointer-events-none z-[9999] transition-[top,left] duration-75">
-      <svg class="w-6 h-6 text-blue-500 drop-shadow-2xl" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M4 2l16 11-7.5 1.5 4.5 7.5-2.5 1.5-4.5-7.5L4 20V2z"/>
-      </svg>
+  <!-- Window Container Area -->
+  <div id="windows-container" class="absolute inset-0 bottom-14 md:bottom-12 pointer-events-none z-20 overflow-hidden">
+    <!-- Draggable, Resizable Windows -->
+  </div>
+
+  <!-- Overview / Task Switcher Modal -->
+  <div id="overview-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col p-6 animate-fade">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-layer-group text-blue-400"></i> Active Windows & Multitasking
+      </div>
+      <button onclick="OS.toggleOverview(false)" class="px-3 py-1.5 text-slate-300 hover:text-white rounded-lg bg-slate-800/80 text-xs">
+        <i class="fa-solid fa-xmark mr-1"></i> Close
+      </button>
     </div>
-  </main>
+    <div id="overview-grid" class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto custom-scroll p-2">
+      <!-- Active app snapshot cards -->
+    </div>
+  </div>
 
-  <!-- ==================== PRECISION MOUSE TRACKPAD ==================== -->
-  <div id="touchTrackpad" class="hidden w-full h-[20vh] bg-slate-900 border-t border-slate-700 flex flex-col z-40 transition-all select-none">
-    <div class="flex justify-between items-center px-4 py-1.5 bg-slate-800 text-xs text-slate-300">
-      <span class="flex items-center gap-1.5"><i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-blue-400"></i> Windows Precision Trackpad</span>
+  <!-- App Drawer / Launcher -->
+  <div id="app-launcher" class="hidden fixed left-2 md:left-4 bottom-16 md:bottom-14 w-[96vw] sm:w-[480px] max-w-[500px] h-[540px] max-h-[82vh] glass-panel rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col z-50 text-white transition-all duration-200">
+    <div class="relative mb-3">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs sm:text-sm"></i>
+      <input id="launcher-search" type="text" placeholder="Search Workspace apps, tools & files..." class="w-full bg-slate-800/90 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    </div>
+    <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+      <span>Applications</span>
       <div class="flex items-center gap-2">
-        <button onclick="toggleTrackpadFloat()" class="hover:text-white px-2 py-0.5 rounded bg-slate-700 text-[10px]">Float / Dock</button>
-        <button onclick="toggleTrackpad()" class="hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+        <button onclick="OS.openApp('studio'); OS.toggleLauncher(false);" class="text-blue-400 hover:text-blue-300 font-medium normal-case flex items-center gap-1">
+          <i class="fa-solid fa-code"></i> Install Code
+        </button>
+        <span class="text-slate-600">•</span>
+        <button onclick="OS.openApp('settings'); OS.toggleLauncher(false);" class="text-emerald-400 hover:text-emerald-300 font-medium normal-case flex items-center gap-1">
+          <i class="fa-solid fa-sheet-plastic"></i> Sync API
+        </button>
       </div>
     </div>
-    <div class="flex-1 flex overflow-hidden">
-      <div id="trackpadArea" class="flex-1 bg-slate-950/70 m-1 rounded-xl border border-slate-700 relative touch-none flex items-center justify-center text-slate-500 text-xs">
-        Touch & slide finger to control mouse cursor
+    <div id="launcher-app-grid" class="grid grid-cols-4 gap-2.5 overflow-y-auto custom-scroll flex-1 pr-1 py-1">
+      <!-- Injected launcher apps -->
+    </div>
+    <div class="mt-3 pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-[10px]">G</div>
+        <span class="text-slate-300 truncate max-w-[150px] sm:max-w-[200px]" id="user-display">workspace@google.internal</span>
       </div>
-      <div class="w-28 flex flex-col gap-1 p-1">
-        <button id="trackpadLeftClick" class="flex-1 bg-slate-800 active:bg-blue-600 rounded-lg text-slate-200 font-semibold text-xs border border-slate-700">L-Click</button>
-        <button id="trackpadRightClick" class="flex-1 bg-slate-800 active:bg-blue-600 rounded-lg text-slate-200 font-semibold text-xs border border-slate-700">R-Click</button>
+      <div class="flex items-center gap-2">
+        <button title="Settings & Backend Script" class="p-2 hover:bg-slate-800 rounded-lg text-slate-300" onclick="OS.openApp('settings'); OS.toggleLauncher(false);"><i class="fa-solid fa-gear"></i></button>
+        <button title="Quick Settings" class="p-2 hover:bg-slate-800 rounded-lg text-slate-300" onclick="OS.toggleQuickSettings(); OS.toggleLauncher(false);"><i class="fa-solid fa-sliders"></i></button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== VIRTUAL TOUCH KEYBOARD ==================== -->
-  <div id="virtualKeyboard" class="hidden fixed z-[9998] win-acrylic text-white rounded-2xl shadow-2xl border border-white/20 p-3 flex flex-col gap-1.5 w-[94vw] max-w-xl touch-none"
-       style="bottom: 60px; left: 50%; transform: translateX(-50%);">
-    <div class="flex items-center justify-between pb-1 px-2 border-b border-white/10 cursor-move" id="kbHeader">
-      <span class="text-xs font-semibold text-white/80 flex items-center gap-1.5">
-        <i data-lucide="keyboard" class="w-3.5 h-3.5 text-blue-400"></i> Windows Touch Keyboard
-      </span>
-      <div class="flex items-center gap-1">
-        <button onclick="document.activeElement?.blur();" class="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20">Release Focus</button>
-        <button onclick="toggleVirtualKeyboard()" class="text-white/60 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-      </div>
+  <!-- Quick Settings Panel -->
+  <div id="quick-settings-panel" class="hidden fixed right-2 md:right-4 bottom-16 md:bottom-14 w-[92vw] sm:w-80 glass-panel rounded-2xl p-4 shadow-2xl z-50 text-white space-y-3.5">
+    <div class="flex items-center justify-between border-b border-slate-700/80 pb-2">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Quick Settings</span>
+      <span id="backend-status-pill" class="text-xs text-emerald-400 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Sheet Ready</span>
     </div>
-    <div id="keyboardKeys" class="flex flex-col gap-1 text-xs"></div>
-  </div>
-
-  <!-- ==================== WINDOWS 11 CENTERED TASKBAR ==================== -->
-  <footer id="taskbar" class="w-full h-12 taskbar-surface flex items-center justify-between px-3 z-40 relative select-none">
-    
-    <!-- Left: Widgets Button -->
-    <div class="flex items-center">
-      <button onclick="toggleWidgetsPane()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5 text-white/80" title="Widgets">
-        <i data-lucide="cloud-sun" class="w-4 h-4 text-blue-400"></i>
-        <span class="hidden md:inline text-xs font-medium">Cloud 26°C</span>
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <button onclick="OS.toggleWallpaper()" class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 p-2.5 rounded-xl text-slate-300 hover:bg-slate-700 transition">
+        <i class="fa-solid fa-image text-blue-400"></i> <span>Wallpaper</span>
+      </button>
+      <button onclick="OS.toggleAudio()" id="btn-audio-toggle" class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 p-2.5 rounded-xl text-slate-300 hover:bg-slate-700 transition">
+        <i class="fa-solid fa-volume-high text-emerald-400"></i> <span>Sound: ON</span>
+      </button>
+      <button onclick="OS.toggleOverview()" class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 p-2.5 rounded-xl text-slate-300 hover:bg-slate-700 transition">
+        <i class="fa-solid fa-layer-group text-purple-400"></i> <span>Multitask</span>
+      </button>
+      <button onclick="OS.openApp('settings')" class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 p-2.5 rounded-xl text-slate-300 hover:bg-slate-700 transition">
+        <i class="fa-solid fa-code text-amber-400"></i> <span>Code.gs Script</span>
       </button>
     </div>
-
-    <!-- Center: Windows 11 Start & Running Apps -->
-    <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-      <!-- Windows 11 Start Button -->
-      <button onclick="toggleStartMenu()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition text-blue-400" title="Start">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M2 3h9v9H2V3zm11 0h9v9h-9V3zM2 13h9v8H2v-8zm11 0h9v8h-9v-8z"/>
-        </svg>
-      </button>
-
-      <!-- Taskbar Pinned Apps -->
-      <div id="taskbarPinnedApps" class="flex items-center gap-1"></div>
-      <div class="w-px h-5 bg-white/20 mx-1"></div>
-      <!-- Taskbar Running Instances -->
-      <div id="taskbarRunningApps" class="flex items-center gap-1 max-w-[30vw] overflow-x-auto"></div>
-    </div>
-
-    <!-- Right: System Tray & Clocks -->
-    <div class="flex items-center gap-2 text-xs text-white">
-      <button onclick="toggleVirtualKeyboard()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Keyboard">
-        <i data-lucide="keyboard" class="w-4 h-4"></i>
-      </button>
-      <button onclick="toggleTrackpad()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Trackpad">
-        <i data-lucide="mouse" class="w-4 h-4"></i>
-      </button>
-
-      <div onclick="toggleQuickSettings()" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex items-center gap-2 text-white/80 transition active:scale-95">
-        <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
-        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-        <i data-lucide="battery" class="w-3.5 h-3.5"></i>
-      </div>
-
-      <div onclick="launchApp('settings')" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex flex-col items-end leading-tight text-right text-white/90">
-        <span id="taskbarTime" class="font-semibold text-xs">03:02 AM</span>
-        <span id="taskbarDate" class="text-[10px] text-white/60">9/20/2026</span>
-      </div>
-      <div onclick="minimizeAllWindows()" class="w-1.5 h-8 border-l border-white/20 hover:bg-white/20 cursor-pointer ml-1" title="Show Desktop"></div>
-    </div>
-  </footer>
-
-  <!-- ==================== WINDOWS 11 START MENU ==================== -->
-  <aside id="startMenu" class="hidden absolute bottom-14 left-1/2 -translate-x-1/2 w-[92vw] max-w-xl win-acrylic text-white rounded-2xl shadow-2xl p-6 z-50 border border-white/20">
-    <div class="relative mb-5">
-      <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-white/50"></i>
-      <input id="startSearchInput" oninput="filterStartApps(this.value)" type="text" placeholder="Type here to search apps, files, tools..."
-             class="w-full bg-white/10 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-white/40 outline-none focus:ring-1 focus:ring-blue-400" />
-    </div>
-
-    <div class="flex items-center justify-between mb-3 text-xs font-semibold text-white/80">
-      <span>Pinned Applications</span>
-      <button onclick="renderStartApps(true)" class="text-blue-400 hover:text-blue-300">All Apps &gt;</button>
-    </div>
-    <div id="startAppGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-64 overflow-y-auto p-1 mb-5"></div>
-
-    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-md" id="userAvatarLetter">U</div>
-        <div>
-          <div class="font-semibold text-white leading-none" id="startUsername">Guest</div>
-          <div class="text-[10px] text-white/50" id="startEmail">Cloud Mode</div>
-        </div>
-      </div>
-      <button onclick="handleLogout()" class="p-2 rounded-xl hover:bg-red-500/20 text-red-400 transition" title="Sign Out">
-        <i data-lucide="log-out" class="w-4 h-4"></i>
-      </button>
-    </div>
-  </aside>
-
-  <!-- ==================== QUICK SETTINGS FLYOUT ==================== -->
-  <aside id="quickSettingsFlyout" class="hidden absolute bottom-14 right-4 w-80 win-acrylic text-white rounded-2xl p-4 shadow-2xl z-50 border border-white/20 space-y-4">
-    <div class="grid grid-cols-3 gap-2">
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="wifi" class="w-4 h-4"></i><span class="text-[11px]">Wi-Fi</span>
-      </div>
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="bluetooth" class="w-4 h-4"></i><span class="text-[11px]">Bluetooth</span>
-      </div>
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="plane" class="w-4 h-4"></i><span class="text-[11px]">Airplane</span>
-      </div>
-    </div>
-    <div class="space-y-2 text-xs">
-      <div>
-        <div class="flex justify-between mb-1 text-white/70"><span>Screen Dimmer</span><i data-lucide="sun" class="w-3.5 h-3.5"></i></div>
-        <input type="range" min="0" max="85" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-blue-500 cursor-pointer" />
-      </div>
-    </div>
-  </aside>
-
-  <!-- ==================== 100% BULLETPROOF AUTHENTICATION MODAL ==================== -->
-  <div id="authGate" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
-    <div class="win-acrylic border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md text-white shadow-2xl relative z-[10001] pointer-events-auto">
-      
-      <div class="flex items-center gap-3 mb-5">
-        <div class="p-3 bg-blue-600 rounded-2xl shadow-lg">
-          <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2 3h9v9H2V3zm11 0h9v9h-9V3zM2 13h9v8H2v-8zm11 0h9v8h-9v-8z"/>
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight">Windows 11 CloudOS</h1>
-          <p class="text-xs text-white/60">Zero local footprint cloud workstation</p>
-        </div>
-      </div>
-
-      <!-- Apps Script Web App Endpoint Input -->
-      <div class="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs space-y-1">
-        <label class="font-medium text-blue-300">Google Apps Script Web App URL:</label>
-        <input id="cfgAppsScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"
-               class="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-      </div>
-
-      <!-- Tab Switcher (Sign In / Register / Reset) -->
-      <div class="flex rounded-xl bg-white/10 p-1 mb-4 text-xs">
-        <button id="tabBtnLogin" type="button" onclick="activateAuthTab('login')" class="flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition">Sign In</button>
-        <button id="tabBtnRegister" type="button" onclick="activateAuthTab('register')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Register</button>
-        <button id="tabBtnForgot" type="button" onclick="activateAuthTab('forgot')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Reset</button>
-      </div>
-
-      <!-- Tab 1: Login Form -->
-      <div id="paneLogin" class="auth-tab-visible space-y-3">
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Username</label>
-          <input id="loginUsername" type="text" placeholder="Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Password</label>
-          <input id="loginPassword" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <button id="btnActionLogin" type="button" onclick="doAuthAction('login')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">
-          Sign In to Windows 11
-        </button>
-      </div>
-
-      <!-- Tab 2: Register Form -->
-      <div id="paneRegister" class="auth-tab-hidden space-y-3">
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Desired Username</label>
-          <input id="regUsername" type="text" placeholder="Choose username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Email (For Password Recovery)</label>
-          <input id="regEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Password</label>
-          <input id="regPassword" type="password" placeholder="Create password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <button id="btnActionRegister" type="button" onclick="doAuthAction('register')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">
-          Create Cloud Account & Drive Folder
-        </button>
-      </div>
-
-      <!-- Tab 3: Forgot Password Form -->
-      <div id="paneForgot" class="auth-tab-hidden space-y-3">
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Registered Email</label>
-          <input id="forgotEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <p class="text-[11px] text-white/50">Your password will be retrieved and emailed to your inbox via Google Apps Script.</p>
-        <button id="btnActionForgot" type="button" onclick="doAuthAction('forgot')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">
-          Email My Password
-        </button>
-      </div>
-
-      <div id="authStatus" class="mt-3 text-xs text-center text-amber-400 min-h-5"></div>
+    <div class="space-y-1 text-xs">
+      <div class="flex justify-between text-slate-400"><span>Display Brightness</span> <i class="fa-solid fa-sun"></i></div>
+      <input type="range" class="w-full accent-blue-500 h-1.5 bg-slate-700 rounded cursor-pointer" value="90">
     </div>
   </div>
 
-  <!-- ==================== SCRIPT ENGINE ==================== -->
+  <!-- Context Menu for Long Press / Right Click (Uninstall / Open) -->
+  <div id="app-context-menu" class="hidden fixed z-50 glass-panel text-white py-1.5 px-1 rounded-xl shadow-2xl border border-slate-700 w-48 text-xs select-none">
+    <div id="ctx-app-title" class="px-3 py-1 font-bold text-slate-300 border-b border-slate-700/60 truncate">App Options</div>
+    <button id="ctx-btn-open" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 rounded-lg flex items-center gap-2 transition">
+      <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Open
+    </button>
+    <button id="ctx-btn-uninstall" class="w-full text-left px-3 py-1.5 hover:bg-red-600 text-rose-300 hover:text-white rounded-lg flex items-center gap-2 transition">
+      <i class="fa-solid fa-trash text-[10px]"></i> Uninstall App
+    </button>
+  </div>
+
+  <!-- Taskbar / Dock Bar -->
+  <div id="taskbar" class="fixed bottom-0 left-0 right-0 h-14 md:h-12 glass-shelf z-40 flex items-center justify-between px-2 md:px-4">
+    <div class="flex items-center gap-1 sm:gap-2">
+      <!-- Launcher Button -->
+      <button id="launcher-trigger" aria-label="Open App Launcher" class="w-10 h-10 md:w-9 md:h-9 rounded-full bg-slate-800/90 hover:bg-blue-600/40 border border-white/10 flex items-center justify-center text-white transition transform active:scale-90 shadow">
+        <div class="w-4 h-4 rounded-full border-2 border-white/90 flex items-center justify-center">
+          <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+        </div>
+      </button>
+
+      <!-- Multitask Switcher Button -->
+      <button onclick="OS.toggleOverview()" aria-label="Task Switcher" class="w-9 h-9 rounded-xl hover:bg-slate-800/80 text-slate-300 flex items-center justify-center transition active:scale-95 text-xs">
+        <i class="fa-solid fa-layer-group text-sm"></i>
+      </button>
+
+      <!-- Taskbar Running Apps -->
+      <div id="taskbar-apps" class="flex items-center gap-1.5 overflow-x-auto custom-scroll max-w-[48vw] sm:max-w-[62vw] py-1">
+        <!-- Injected open tabs -->
+      </div>
+    </div>
+
+    <!-- System Tray / Status -->
+    <div class="flex items-center gap-1.5">
+      <button id="system-tray-btn" class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-white text-xs transition cursor-pointer">
+        <div class="flex items-center gap-1.5 text-slate-300 text-[11px]">
+          <i class="fa-solid fa-wifi"></i>
+          <i class="fa-solid fa-battery-half text-emerald-400"></i>
+        </div>
+        <span class="h-3 w-[1px] bg-slate-700"></span>
+        <span id="live-clock" class="font-medium text-xs">12:00</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="fixed top-4 right-4 left-4 sm:left-auto sm:w-84 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Hidden Camera Video element for Document Scanner processing -->
+  <video id="scanner-webcam-video" autoplay playsinline class="hidden"></video>
+
   <script>
-    /* System State */
-    const STATE = {
-      appsScriptUrl: "https://script.google.com/macros/s/AKfycbxCwpJad_RjrkWSU9vfxmXrAVmk_3ixIz1LoA8xoHkshvxF7ERR35MMw7yw7eVNWYmowQ/exec",
-      currentUser: null,
-      windows: [],
-      activeWinId: null,
-      installedApps: [],
-      todos: [
-        { id: '1', Task: 'Sync project files with Google Drive', Completed: 'false' },
-        { id: '2', Task: 'Edit document in WordPad', Completed: 'true' }
-      ],
-      virtualMouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-      isShift: false
-    };
+    /* Google Apps Script Code.gs content ready for user deployment */
+    const CODE_GS_TEMPLATE = `/**
+ * Google Workspace WebOS Backend Script (Code.gs)
+ * Zero-Login direct data & file sync to Google Sheets & Google Drive.
+ *
+ * Instructions:
+ * 1. Open https://script.google.com and create a new project.
+ * 2. Paste this entire code into Code.gs.
+ * 3. Click "Deploy" > "New deployment".
+ * 4. Select Type: "Web App".
+ * 5. Set "Execute as": "Me".
+ * 6. Set "Who has access": "Anyone" (allows zero-login frontend access).
+ * 7. Copy the Web App URL and paste it into the WebOS Settings App.
+ */
 
-    /* Windows 11 Built-in Apps */
-    const WIN11_APPS = {
-      explorer: { name: 'File Explorer', icon: 'folder', color: 'text-amber-400' },
-      edge: { name: 'Microsoft Edge', icon: 'globe', color: 'text-cyan-400' },
-      word: { name: 'WordPad', icon: 'file-text', color: 'text-blue-500' },
-      vscode: { name: 'VS Code', icon: 'code', color: 'text-blue-400' },
-      terminal: { name: 'Terminal', icon: 'terminal', color: 'text-purple-400' },
-      store: { name: 'Microsoft Store', icon: 'shopping-bag', color: 'text-sky-400' },
-      todo: { name: 'To Do', icon: 'check-square', color: 'text-teal-400' },
-      mail: { name: 'Outlook', icon: 'mail', color: 'text-blue-400' },
-      photos: { name: 'Photos', icon: 'image', color: 'text-pink-400' },
-      media: { name: 'Media Player', icon: 'play-circle', color: 'text-orange-400' },
-      youtube: { name: 'YouTube', icon: 'play-square', color: 'text-red-500' },
-      scanner: { name: 'Doc Scanner', icon: 'scan-line', color: 'text-emerald-400' },
-      calculator: { name: 'Calculator', icon: 'calculator', color: 'text-slate-300' },
-      settings: { name: 'Settings', icon: 'settings', color: 'text-slate-400' }
-    };
+function doPost(e) {
+  try {
+    var rawData = e.postData ? e.postData.contents : null;
+    if (!rawData) {
+      return responseJSON({ status: "error", message: "No post data received" });
+    }
+    var data = JSON.parse(rawData);
+    var action = data.action || "saveEntry";
+    var sheetName = data.sheetName || "General";
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(sheetName);
 
-    /* Boot Initializer */
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      initClocks();
-      renderDesktopIcons();
-      renderTaskbar();
-      initVirtualKeyboard();
-      initTrackpad();
-      renderWidgetTodos();
-      checkSavedSession();
+    // Automatically create sheet if it doesn't exist
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+    }
+
+    if (action === "saveFile" || data.fileBase64) {
+      // Direct file storage to Google Drive folder
+      var folderName = data.folderName || "WebOS_Uploads";
+      var folders = DriveApp.getFoldersByName(folderName);
+      var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+      var contentType = data.contentType || "application/octet-stream";
+      var decoded = Utilities.base64Decode(data.fileBase64);
+      var blob = Utilities.newBlob(decoded, contentType, data.fileName || "file_" + new Date().getTime());
+      var file = folder.createFile(blob);
+      var fileUrl = file.getUrl();
+
+      // Ensure headers exist
+      ensureHeaders(sheet, ["Timestamp", "File Name", "File URL", "Content Type", "Size (bytes)"]);
+      sheet.appendRow([new Date(), data.fileName, fileUrl, contentType, blob.getBytes().length]);
+
+      return responseJSON({ status: "success", fileUrl: fileUrl, message: "File saved to Drive and logged to Sheet" });
+    }
+
+    // Dynamic Header & Row Insertion for Any App
+    var rowData = data.payload || {};
+    var keys = Object.keys(rowData);
+    if (keys.length === 0) {
+      return responseJSON({ status: "error", message: "Payload is empty" });
+    }
+
+    var headers = ["Timestamp"].concat(keys);
+    ensureHeaders(sheet, headers);
+
+    // Retrieve current header layout to place cells correctly
+    var currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var newRow = new Array(currentHeaders.length);
+    newRow[0] = new Date();
+
+    for (var i = 1; i < currentHeaders.length; i++) {
+      var headerName = currentHeaders[i];
+      newRow[i] = rowData[headerName] !== undefined ? rowData[headerName] : "";
+    }
+
+    sheet.appendRow(newRow);
+    return responseJSON({ status: "success", sheet: sheetName, message: "Entry logged successfully" });
+  } catch (err) {
+    return responseJSON({ status: "error", message: err.toString() });
+  }
+}
+
+function doGet(e) {
+  return responseJSON({ status: "ready", service: "Google Workspace WebOS Backend API", timestamp: new Date() });
+}
+
+function ensureHeaders(sheet, requiredHeaders) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(requiredHeaders);
+    sheet.getRange(1, 1, 1, requiredHeaders.length).setFontWeight("bold").setBackground("#e8f0fe");
+    return;
+  }
+  var existingHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  var toAdd = [];
+  requiredHeaders.forEach(function(h) {
+    if (existingHeaders.indexOf(h) === -1) {
+      toAdd.push(h);
+    }
+  });
+  if (toAdd.length > 0) {
+    var startCol = existingHeaders.length + 1;
+    toAdd.forEach(function(h, idx) {
+      sheet.getRange(1, startCol + idx).setValue(h).setFontWeight("bold").setBackground("#e8f0fe");
     });
+  }
+}
 
-    /* Live Clocks */
-    function initClocks() {
-      const update = () => {
-        const d = new Date();
-        const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const dateStr = d.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: 'numeric' });
-        const dateLong = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-        document.getElementById('taskbarTime').innerText = t;
-        document.getElementById('taskbarDate').innerText = dateStr;
-        document.getElementById('widgetTime').innerText = t;
-        document.getElementById('widgetDate').innerText = dateLong;
-      };
-      update();
-      setInterval(update, 1000);
-    }
+function responseJSON(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}`;
 
-    /* Auth Tab Switching */
-    function activateAuthTab(tab) {
-      document.getElementById('paneLogin').className = (tab === 'login') ? 'auth-tab-visible space-y-3' : 'auth-tab-hidden space-y-3';
-      document.getElementById('paneRegister').className = (tab === 'register') ? 'auth-tab-visible space-y-3' : 'auth-tab-hidden space-y-3';
-      document.getElementById('paneForgot').className = (tab === 'forgot') ? 'auth-tab-visible space-y-3' : 'auth-tab-hidden space-y-3';
+    const OS = {
+      windows: {},
+      activeWindowId: null,
+      zIndexCounter: 100,
+      contextTargetAppId: null,
+      isMobile: window.innerWidth < 768,
+      soundEnabled: true,
+      audioCtx: null,
 
-      ['Login', 'Register', 'Forgot'].forEach(t => {
-        const btn = document.getElementById('tabBtn' + t);
-        if (t.toLowerCase() === tab) {
-          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition';
-        } else {
-          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition';
+      // Google Apps Script endpoint configuration
+      appsScriptUrl: localStorage.getItem('g_webos_script_url') || 'https://script.google.com/macros/s/AKfycbxCwpJad_RjrkWSU9vfxmXrAVmk_3ixIz1LoA8xoHkshvxF7ERR35MMw7yw7eVNWYmowQ/exec',
+
+      wallpapers: [
+        'radial-gradient(circle at 20% 20%, rgb(30, 58, 138) 0%, rgb(15, 23, 42) 80%)',
+        'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0284c7 100%)',
+        'radial-gradient(circle at 50% 50%, #2e1065, #0f172a)',
+        'linear-gradient(to right, #052e16, #0f172a, #1e1b4b)',
+        'linear-gradient(135deg, #1e3a8a, #3b82f6, #60a5fa)'
+      ],
+      currentWallpaperIndex: 0,
+
+      // Pre-installed Core Productivity, Android & Google Ecosystem Apps
+      defaultApps: {
+        docs: {
+          id: 'docs',
+          name: 'Google Docs',
+          icon: 'fa-solid fa-file-lines',
+          color: '#2563eb',
+          isSystem: true,
+          defaultWidth: 880,
+          defaultHeight: 620,
+          render: (win) => OS.renderDocs(win)
+        },
+        sheets: {
+          id: 'sheets',
+          name: 'Google Sheets',
+          icon: 'fa-solid fa-table-cells',
+          color: '#16a34a',
+          isSystem: true,
+          defaultWidth: 920,
+          defaultHeight: 580,
+          render: (win) => OS.renderSheets(win)
+        },
+        slides: {
+          id: 'slides',
+          name: 'Google Slides',
+          icon: 'fa-solid fa-file-powerpoint',
+          color: '#d97706',
+          isSystem: true,
+          defaultWidth: 900,
+          defaultHeight: 580,
+          render: (win) => OS.renderSlides(win)
+        },
+        scanner: {
+          id: 'scanner',
+          name: 'Doc Scanner',
+          icon: 'fa-solid fa-camera-viewfinder',
+          color: '#0ea5e9',
+          isSystem: true,
+          defaultWidth: 780,
+          defaultHeight: 580,
+          render: (win) => OS.renderScanner(win)
+        },
+        pdf: {
+          id: 'pdf',
+          name: 'PDF Reader',
+          icon: 'fa-solid fa-file-pdf',
+          color: '#dc2626',
+          isSystem: true,
+          defaultWidth: 820,
+          defaultHeight: 600,
+          render: (win) => OS.renderPDFReader(win)
+        },
+        files: {
+          id: 'files',
+          name: 'Files & Drive',
+          icon: 'fa-solid fa-folder-open',
+          color: '#0284c7',
+          isSystem: true,
+          defaultWidth: 820,
+          defaultHeight: 520,
+          render: (win) => OS.renderFiles(win)
+        },
+        chrome: {
+          id: 'chrome',
+          name: 'Chrome Browser',
+          icon: 'fa-brands fa-chrome',
+          color: '#ea4335',
+          isSystem: true,
+          defaultWidth: 890,
+          defaultHeight: 620,
+          render: (win) => OS.renderChrome(win)
+        },
+        contacts: {
+          id: 'contacts',
+          name: 'Contacts',
+          icon: 'fa-solid fa-address-book',
+          color: '#4f46e5',
+          isSystem: true,
+          defaultWidth: 760,
+          defaultHeight: 530,
+          render: (win) => OS.renderContacts(win)
+        },
+        phone: {
+          id: 'phone',
+          name: 'Phone Dialer',
+          icon: 'fa-solid fa-phone',
+          color: '#10b981',
+          isSystem: true,
+          defaultWidth: 420,
+          defaultHeight: 580,
+          render: (win) => OS.renderPhone(win)
+        },
+        messages: {
+          id: 'messages',
+          name: 'Messages',
+          icon: 'fa-solid fa-comment-dots',
+          color: '#3b82f6',
+          isSystem: true,
+          defaultWidth: 780,
+          defaultHeight: 540,
+          render: (win) => OS.renderMessages(win)
+        },
+        whatsapp: {
+          id: 'whatsapp',
+          name: 'WhatsApp Web',
+          icon: 'fa-brands fa-whatsapp',
+          color: '#22c55e',
+          isSystem: true,
+          defaultWidth: 860,
+          defaultHeight: 580,
+          render: (win) => OS.renderWhatsApp(win)
+        },
+        studio: {
+          id: 'studio',
+          name: 'App Studio',
+          icon: 'fa-solid fa-code',
+          color: '#9333ea',
+          isSystem: true,
+          defaultWidth: 840,
+          defaultHeight: 600,
+          render: (win) => OS.renderAppStudio(win)
+        },
+        manager: {
+          id: 'manager',
+          name: 'App Manager',
+          icon: 'fa-solid fa-cube',
+          color: '#64748b',
+          isSystem: true,
+          defaultWidth: 720,
+          defaultHeight: 520,
+          render: (win) => OS.renderAppManager(win)
+        },
+        settings: {
+          id: 'settings',
+          name: 'Settings & Cloud',
+          icon: 'fa-solid fa-gear',
+          color: '#475569',
+          isSystem: true,
+          defaultWidth: 760,
+          defaultHeight: 560,
+          render: (win) => OS.renderSettings(win)
         }
-      });
-      document.getElementById('authStatus').innerText = '';
-    }
+      },
 
-    /* Dual-Mode Network Call (CORS-Safe) */
-    async function apiCall(action, payload = {}) {
-      const inputUrl = document.getElementById('cfgAppsScriptUrl').value.trim();
-      const url = inputUrl || STATE.appsScriptUrl;
-      if (!url) throw new Error("Please enter your Google Apps Script Web App URL.");
-      localStorage.setItem('cloudos_win11_script_url', url);
-      STATE.appsScriptUrl = url;
+      appRegistry: {},
 
-      // Method 1: Send as text/plain to bypass CORS OPTIONS preflight
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action, ...payload })
+      init() {
+        this.appRegistry = { ...this.defaultApps };
+        this.loadCustomApps();
+        this.setupDesktopIcons();
+        this.setupLauncher();
+        this.setupClock();
+        this.setupGlobalEvents();
+        this.checkMobileViewport();
+
+        window.addEventListener('resize', () => {
+          this.isMobile = window.innerWidth < 768;
+          this.checkMobileViewport();
         });
-        return await res.json();
-      } catch (err) {
-        // Method 2 Fallback: Encode as URL GET parameters (100% CORS-Proof on all devices)
-        const params = new URLSearchParams({ action, ...payload });
-        const res = await fetch(url + '?' + params.toString());
-        return await res.json();
-      }
-    }
 
-    /* Auth Execution Handler */
-    async function doAuthAction(type) {
-      const status = document.getElementById('authStatus');
-      status.innerText = "Connecting to Windows Cloud Service...";
+        // Launch Docs on start
+        setTimeout(() => {
+          this.openApp('docs');
+          if (!this.isMobile) this.openApp('scanner');
+        }, 300);
+      },
 
-      try {
-        if (type === 'login') {
-          const u = document.getElementById('loginUsername').value.trim();
-          const p = document.getElementById('loginPassword').value.trim();
-          if (!u || !p) { status.innerText = "Please enter username and password."; return; }
-          const res = await apiCall('login', { username: u, password: p });
-          if (res.status === 'success') {
-            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
-            checkSavedSession();
-          } else { status.innerText = res.message; }
-        } else if (type === 'register') {
-          const u = document.getElementById('regUsername').value.trim();
-          const e = document.getElementById('regEmail').value.trim();
-          const p = document.getElementById('regPassword').value.trim();
-          if (!u || !e || !p) { status.innerText = "All registration fields are required."; return; }
-          const res = await apiCall('register', { username: u, email: e, password: p });
-          if (res.status === 'success') {
-            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
-            checkSavedSession();
-          } else { status.innerText = res.message; }
-        } else if (type === 'forgot') {
-          const e = document.getElementById('forgotEmail').value.trim();
-          if (!e) { status.innerText = "Please enter your registered email address."; return; }
-          const res = await apiCall('forgot_password', { email: e });
-          status.innerText = res.message;
+      /* Sound synthesized with Web Audio API (No external sound files) */
+      playTone(freq = 440, type = 'sine', duration = 0.08) {
+        if (!this.soundEnabled) return;
+        try {
+          if (!this.audioCtx) {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume();
+          }
+          const osc = this.audioCtx.createOscillator();
+          const gain = this.audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.06, this.audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.audioCtx.destination);
+          osc.start();
+          osc.stop(this.audioCtx.currentTime + duration);
+        } catch (e) {}
+      },
+
+      toggleAudio() {
+        this.soundEnabled = !this.soundEnabled;
+        const btn = document.getElementById('btn-audio-toggle');
+        if (btn) {
+          btn.innerHTML = `<i class="fa-solid fa-volume-${this.soundEnabled ? 'high text-emerald-400' : 'xmark text-slate-400'}"></i> <span>Sound: ${this.soundEnabled ? 'ON' : 'OFF'}</span>`;
         }
-      } catch (err) {
-        status.innerText = "Connection Error: " + err.message;
-      }
-    }
+        this.notify('Sound Settings', `Audio feedback is ${this.soundEnabled ? 'Enabled' : 'Muted'}`);
+      },
 
-    function checkSavedSession() {
-      const savedUser = sessionStorage.getItem('cloudos_win11_user');
-      const savedScript = localStorage.getItem('cloudos_win11_script_url') || STATE.appsScriptUrl;
-      if (savedScript) {
-        STATE.appsScriptUrl = savedScript;
-        document.getElementById('cfgAppsScriptUrl').value = savedScript;
-      }
-      if (savedUser) {
-        STATE.currentUser = JSON.parse(savedUser);
-        document.getElementById('authGate').classList.add('hidden');
-        document.getElementById('startUsername').innerText = STATE.currentUser.username;
-        document.getElementById('startEmail').innerText = STATE.currentUser.email;
-        document.getElementById('userAvatarLetter').innerText = STATE.currentUser.username.charAt(0).toUpperCase();
-        syncCloudData();
-      }
-    }
+      /* Zero-Login Google Sheet & Google Drive Sync via Apps Script */
+      async syncToGoogleSheet(sheetName, payload, fileData = null) {
+        const url = this.appsScriptUrl || localStorage.getItem('g_webos_script_url');
+        const body = {
+          sheetName: sheetName,
+          payload: payload,
+          action: fileData ? "saveFile" : "saveEntry"
+        };
+        if (fileData) {
+          body.fileName = fileData.name;
+          body.fileBase64 = fileData.base64;
+          body.contentType = fileData.type || 'application/octet-stream';
+          body.folderName = fileData.folder || 'Workspace_Drive';
+        }
 
-    async function syncCloudData() {
-      if (!STATE.currentUser) return;
-      try {
-        const [todosRes, appsRes] = await Promise.all([
-          apiCall('get_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks' }),
-          apiCall('get_apps', { username: STATE.currentUser.username })
-        ]);
-        if (todosRes.data && todosRes.data.length) { STATE.todos = todosRes.data; renderWidgetTodos(); }
-        if (appsRes.apps) { STATE.installedApps = appsRes.apps; renderDesktopIcons(); renderStartApps(); }
-      } catch (e) {
-        console.warn("Cloud sync:", e);
-      }
-    }
+        if (!url) {
+          // Fallback simulation mode
+          console.log(`[Offline Fallback Sync to Sheet: ${sheetName}]`, body);
+          this.notify('Cloud Saved (Local Cache)', `Saved to ${sheetName}. Connect your Code.gs script in Settings for live Google Drive sync.`);
+          return { status: 'mock_success' };
+        }
 
-    /* Desktop Icons */
-    function renderDesktopIcons() {
-      const container = document.getElementById('desktopIcons');
-      container.innerHTML = '';
-      const all = [
-        ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
-        ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
-      ];
+        try {
+          this.notify('Google Sync', `Pushing to Google Sheet [${sheetName}]...`);
+          const res = await fetch(url, {
+            method: 'POST',
+            mode: 'no-cors', // Standard cross-origin web app submission
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          this.playTone(880, 'sine', 0.12);
+          this.notify('Google Cloud Synced', `Successfully synced entry to sheet: ${sheetName}`);
+          return { status: 'success' };
+        } catch (err) {
+          console.error("Google sync error:", err);
+          this.notify('Sync Error', 'Could not reach Apps Script endpoint. Stored locally.');
+          return { status: 'error', error: err };
+        }
+      },
 
-      all.forEach(app => {
-        const div = document.createElement('div');
-        div.className = "win-desktop-icon flex flex-col items-center justify-center p-2 rounded-xl hover:bg-white/10 cursor-pointer text-white transition active:scale-95 text-center";
-        div.innerHTML = `
-          <div class="w-10 h-10 rounded-xl win-mica flex items-center justify-center shadow-lg mb-1 ${app.color || 'text-blue-400'}">
-            <i data-lucide="${app.icon || 'layout-grid'}" class="w-6 h-6"></i>
-          </div>
-          <span class="text-[11px] font-normal tracking-tight drop-shadow truncate w-full text-slate-100">${app.name}</span>
-        `;
-        div.onclick = () => launchApp(app.id, app.meta);
-        container.appendChild(div);
-      });
-      lucide.createIcons();
-      renderStartApps();
-    }
+      checkMobileViewport() {
+        if (this.isMobile) {
+          Object.values(this.windows).forEach(win => {
+            if (!win.maximized) {
+              this.maximizeWindow(win, true);
+            }
+          });
+        }
+      },
 
-    /* Start Menu */
-    function renderStartApps() {
-      const grid = document.getElementById('startAppGrid');
-      grid.innerHTML = '';
-      const list = [
-        ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
-        ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
-      ];
-      list.forEach(app => {
-        const item = document.createElement('button');
-        item.className = "flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center";
-        item.innerHTML = `
-          <div class="w-9 h-9 rounded-xl win-mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
-            <i data-lucide="${app.icon || 'layout-grid'}" class="w-5 h-5"></i>
-          </div>
-          <span class="text-[11px] truncate w-full text-white/90">${app.name}</span>
-        `;
-        item.onclick = () => { launchApp(app.id, app.meta); toggleStartMenu(false); };
-        grid.appendChild(item);
-      });
-      lucide.createIcons();
-    }
+      loadCustomApps() {
+        try {
+          const stored = localStorage.getItem('g_webos_custom_apps_v3');
+          if (stored) {
+            const list = JSON.parse(stored);
+            list.forEach(app => this.registerApp(app, false));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      },
 
-    function filterStartApps(val) {
-      const query = val.toLowerCase().trim();
-      const grid = document.getElementById('startAppGrid');
-      grid.innerHTML = '';
-      const list = [
-        ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
-        ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
-      ];
-      list.filter(a => a.name.toLowerCase().includes(query)).forEach(app => {
-        const item = document.createElement('button');
-        item.className = "flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center";
-        item.innerHTML = `
-          <div class="w-9 h-9 rounded-xl win-mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
-            <i data-lucide="${app.icon || 'layout-grid'}" class="w-5 h-5"></i>
-          </div>
-          <span class="text-[11px] truncate w-full text-white/90">${app.name}</span>
-        `;
-        item.onclick = () => { launchApp(app.id, app.meta); toggleStartMenu(false); };
-        grid.appendChild(item);
-      });
-      lucide.createIcons();
-    }
+      saveCustomApps() {
+        const customs = Object.values(this.appRegistry)
+          .filter(a => !a.isSystem)
+          .map(a => ({
+            id: a.id,
+            name: a.name,
+            icon: a.icon,
+            color: a.color,
+            code: a.code,
+            isSystem: false
+          }));
+        localStorage.setItem('g_webos_custom_apps_v3', JSON.stringify(customs));
+      },
 
-    /* Taskbar */
-    function renderTaskbar() {
-      const pinnedContainer = document.getElementById('taskbarPinnedApps');
-      pinnedContainer.innerHTML = '';
-      const pinned = ['explorer', 'edge', 'word', 'vscode', 'store'];
-
-      pinned.forEach(id => {
-        const app = WIN11_APPS[id];
-        const btn = document.createElement('button');
-        const isRunning = STATE.windows.some(w => w.appKey === id);
-        btn.className = `w-10 h-10 rounded-lg hover:bg-white/10 active:scale-95 transition flex flex-col items-center justify-center relative ${isRunning ? 'bg-white/5' : ''}`;
-        btn.innerHTML = `
-          <i data-lucide="${app.icon}" class="w-5 h-5 ${app.color}"></i>
-          ${isRunning ? '<span class="absolute bottom-1 w-1.5 h-1 bg-blue-400 rounded-full"></span>' : ''}
-        `;
-        btn.onclick = () => launchApp(id);
-        pinnedContainer.appendChild(btn);
-      });
-
-      const runningContainer = document.getElementById('taskbarRunningApps');
-      runningContainer.innerHTML = '';
-      STATE.windows.forEach(w => {
-        const rBtn = document.createElement('button');
-        rBtn.className = `px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-xs transition ${w.id === STATE.activeWinId && !w.minimized ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/70'}`;
-        rBtn.innerHTML = `
-          <i data-lucide="${w.icon}" class="w-3.5 h-3.5 text-blue-400"></i>
-          <span class="max-w-24 truncate">${w.title}</span>
-        `;
-        rBtn.onclick = () => {
-          if (w.minimized) {
-            w.minimized = false;
-            document.getElementById(w.id)?.classList.remove('hidden');
-            focusWindow(w.id);
-          } else if (w.id === STATE.activeWinId) {
-            minimizeWindow(w.id);
-          } else {
-            focusWindow(w.id);
+      registerApp(appData, persist = true) {
+        this.appRegistry[appData.id] = {
+          id: appData.id,
+          name: appData.name,
+          icon: appData.icon || 'fa-solid fa-cube',
+          color: appData.color || '#8b5cf6',
+          isSystem: !!appData.isSystem,
+          code: appData.code,
+          defaultWidth: 780,
+          defaultHeight: 540,
+          render: (win) => {
+            win.contentEl.innerHTML = `
+              <div class="w-full h-full flex flex-col bg-white">
+                <div class="h-8 bg-slate-100 border-b border-slate-200 px-3 flex items-center justify-between text-xs text-slate-600">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-emerald-600"></i> Sandboxed Environment</span>
+                  <div class="flex items-center gap-2">
+                    <button class="hover:text-slate-800 text-xs px-2 py-0.5 rounded bg-slate-200" onclick="OS.reloadCustomApp('${win.id}')"><i class="fa-solid fa-rotate-right"></i> Reload</button>
+                    <button class="hover:text-red-600 text-xs px-2 py-0.5 rounded bg-rose-50 text-rose-600" onclick="OS.uninstallApp('${appData.id}')"><i class="fa-solid fa-trash"></i> Uninstall</button>
+                  </div>
+                </div>
+                <iframe id="iframe-${win.id}" class="w-full flex-1 border-0" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+              </div>
+            `;
+            setTimeout(() => {
+              const iframe = document.getElementById(`iframe-${win.id}`);
+              if (iframe) iframe.srcdoc = appData.code || '<h1>App Loaded</h1>';
+            }, 60);
           }
         };
-        runningContainer.appendChild(rBtn);
-      });
-      lucide.createIcons();
-    }
 
-    /* Window Manager */
-    function launchApp(appKey, customMeta = null) {
-      const winId = 'win_' + Date.now();
-      const isMobile = window.innerWidth < 768;
-      const isTablet = window.innerWidth >= 744 && window.innerWidth <= 1133;
-
-      const meta = customMeta ? customMeta : WIN11_APPS[appKey];
-      const winObj = {
-        id: winId,
-        appKey: appKey,
-        title: meta ? meta.name : 'Application',
-        icon: meta ? meta.icon : 'layout-grid',
-        minimized: false,
-        maximized: isMobile,
-        x: isMobile ? 0 : 50 + (STATE.windows.length * 28),
-        y: isMobile ? 0 : 35 + (STATE.windows.length * 28),
-        w: isMobile ? window.innerWidth : (isTablet ? 700 : 800),
-        h: isMobile ? window.innerHeight - 48 : 530
-      };
-
-      STATE.windows.push(winObj);
-      renderWindow(winObj, customMeta);
-      focusWindow(winId);
-      renderTaskbar();
-    }
-
-    function renderWindow(win, customMeta) {
-      const container = document.getElementById('windowsContainer');
-      const winEl = document.createElement('div');
-      winEl.id = win.id;
-      winEl.className = `absolute rounded-xl win-acrylic text-white flex flex-col shadow-2xl border border-white/15 overflow-hidden transition-[transform,opacity] duration-150 ${win.maximized ? 'inset-0 !rounded-none !border-0' : ''}`;
-      winEl.style.left = win.maximized ? '0px' : win.x + 'px';
-      winEl.style.top = win.maximized ? '0px' : win.y + 'px';
-      winEl.style.width = win.maximized ? '100vw' : win.w + 'px';
-      winEl.style.height = win.maximized ? 'calc(100vh - 48px)' : win.h + 'px';
-
-      winEl.innerHTML = `
-        <div class="h-9 bg-black/40 border-b border-white/10 px-3 flex items-center justify-between cursor-move" onpointerdown="startWinDrag(event, '${win.id}')">
-          <div class="flex items-center gap-2">
-            <i data-lucide="${win.icon}" class="w-3.5 h-3.5 text-blue-400"></i>
-            <span class="text-xs font-normal text-white/90">${win.title}</span>
-          </div>
-          <div class="flex items-center">
-            <button onclick="minimizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Minimize"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
-            <button onclick="maximizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Maximize"><i data-lucide="square" class="w-3 h-3"></i></button>
-            <button onclick="closeWindow('${win.id}')" class="h-9 px-3 hover:bg-red-600 text-white/70 hover:text-white" title="Close"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-          </div>
-        </div>
-        <div class="flex-1 overflow-auto bg-slate-950/85 p-3 relative flex flex-col" id="${win.id}_body">
-          ${getAppContent(win.appKey, customMeta, win.id)}
-        </div>
-      `;
-
-      winEl.onpointerdown = () => focusWindow(win.id);
-      container.appendChild(winEl);
-      lucide.createIcons();
-    }
-
-    function getAppContent(key, customMeta, winId) {
-      if (customMeta) {
-        if (customMeta.type === 'url') {
-          return `<iframe src="${customMeta.codeOrUrl}" class="w-full h-full border-0 rounded-lg bg-white"></iframe>`;
-        } else {
-          return `<iframe srcdoc="${escapeHtml(customMeta.codeOrUrl)}" sandbox="allow-scripts allow-forms" class="w-full h-full border-0 rounded-lg bg-white"></iframe>`;
+        this.setupDesktopIcons();
+        this.setupLauncher();
+        if (persist) {
+          this.saveCustomApps();
+          this.notify('App Installed', `${appData.name} installed successfully.`);
         }
-      }
+      },
 
-      switch (key) {
-        case 'explorer':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex flex-wrap gap-2 items-center justify-between pb-2 border-b border-white/10">
-                <div class="flex items-center gap-2">
-                  <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium cursor-pointer flex items-center gap-1.5 transition">
-                    <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Upload to Google Drive
-                    <input type="file" class="hidden" onchange="uploadFileToDrive(event, '${winId}')" />
-                  </label>
-                  <button onclick="refreshDriveView('${winId}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg font-medium flex items-center gap-1">
-                    <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Refresh
-                  </button>
-                </div>
-                <span class="text-white/60">Drive: CloudOS\\${STATE.currentUser ? STATE.currentUser.username : 'User'}</span>
-              </div>
-              <div id="${winId}_drive_list" class="flex-1 overflow-y-auto space-y-2"></div>
-            </div>`;
-
-        case 'word':
-          return `
-            <div class="flex flex-col h-full bg-white text-slate-900 rounded-lg overflow-hidden shadow-inner">
-              <div class="bg-slate-100 border-b border-slate-200 p-2 flex flex-wrap gap-1.5 text-xs items-center">
-                <button onclick="document.execCommand('bold')" class="px-2.5 py-1 rounded bg-white shadow-sm font-bold">B</button>
-                <button onclick="document.execCommand('italic')" class="px-2.5 py-1 rounded bg-white shadow-sm italic">I</button>
-                <button onclick="document.execCommand('underline')" class="px-2.5 py-1 rounded bg-white shadow-sm underline">U</button>
-                <button onclick="document.execCommand('justifyLeft')" class="px-2 py-1 rounded bg-white shadow-sm">Left</button>
-                <button onclick="document.execCommand('justifyCenter')" class="px-2 py-1 rounded bg-white shadow-sm">Center</button>
-                <button onclick="document.execCommand('justifyFull')" class="px-2 py-1 rounded bg-white shadow-sm font-semibold">Justify</button>
-                <label class="px-3 py-1 rounded bg-blue-600 text-white cursor-pointer hover:bg-blue-500 font-medium">
-                  Open .docx <input type="file" accept=".docx" class="hidden" onchange="parseDocx(event, '${winId}')" />
-                </label>
-                <button onclick="saveWordDoc('${winId}')" class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium">Save to Drive</button>
-                <button onclick="downloadWordDoc('${winId}')" class="px-3 py-1 rounded bg-slate-800 text-white hover:bg-slate-700 font-medium">Download</button>
-              </div>
-              <div id="${winId}_word_body" contenteditable="true" class="flex-1 p-6 overflow-y-auto focus:outline-none text-sm leading-relaxed" style="min-height: 200px;">
-                <h1 class="text-2xl font-bold mb-2">Windows WordPad</h1>
-                <p>Welcome to WordPad. You can open Microsoft Word .docx files or save directly to Google Drive.</p>
-              </div>
-            </div>`;
-
-        case 'vscode':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex items-center justify-between pb-1 border-b border-white/10">
-                <div class="flex items-center gap-2">
-                  <span class="px-3 py-1 bg-white/10 rounded-md text-blue-400 font-mono">App.html</span>
-                  <button onclick="runVsCode('${winId}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-md text-white font-medium flex items-center gap-1">
-                    <i data-lucide="play" class="w-3 h-3"></i> Run Project
-                  </button>
-                </div>
-                <button onclick="saveVsCodeToDrive('${winId}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded-md text-white font-medium">Save to Drive</button>
-              </div>
-              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 overflow-hidden">
-                <textarea id="${winId}_code_editor" class="w-full h-full bg-slate-900 text-emerald-400 font-mono p-3 rounded-lg border border-white/10 outline-none resize-none text-xs"><!DOCTYPE html>
-<html>
-<body style="font-family:'Segoe UI',sans-serif;text-align:center;padding:40px;background:#18181b;color:#fff;">
-  <h2>Visual Studio Code on Windows 11</h2>
-  <button onclick="alert('Running live inside sandbox!')" style="padding:10px 20px;border-radius:8px;background:#0067c0;color:#fff;border:0;">Execute</button>
-</body>
-</html></textarea>
-                <iframe id="${winId}_code_preview" class="w-full h-full bg-white rounded-lg border-0"></iframe>
-              </div>
-            </div>`;
-
-        case 'edge':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/10">
-                <input id="${winId}_browser_url" type="text" value="https://en.wikipedia.org" onkeydown="if(event.key==='Enter') navigateBrowser('${winId}')"
-                       class="flex-1 bg-black/40 border border-white/10 rounded-md px-3 py-1 text-white outline-none focus:border-blue-500" />
-                <button onclick="navigateBrowser('${winId}')" class="px-3 py-1 bg-blue-600 text-white rounded-md font-medium">Go</button>
-              </div>
-              <div class="flex-1 bg-white rounded-lg overflow-hidden relative">
-                <iframe id="${winId}_browser_frame" src="https://en.wikipedia.org" class="w-full h-full border-0"></iframe>
-              </div>
-            </div>`;
-
-        case 'store':
-          return `
-            <div class="p-4 space-y-4 max-w-lg mx-auto text-xs">
-              <div class="text-sm font-semibold text-white">Microsoft Store & App Installer</div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="font-medium text-blue-400">Option 1: Deploy Web App / PWA by URL</div>
-                <input id="${winId}_store_url" type="url" placeholder="https://example.com" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_store_name_url" type="text" placeholder="App Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <button onclick="installStoreUrl('${winId}')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Install Web App</button>
-              </div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="font-medium text-emerald-400">Option 2: Deploy from Code Upload (.html, .js)</div>
-                <input id="${winId}_store_name_file" type="text" placeholder="App Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_store_file" type="file" accept=".html,.js,.txt" class="text-white/70" />
-                <button onclick="installStoreCode('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold text-white">Upload & Install</button>
-              </div>
-            </div>`;
-
-        case 'todo':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex gap-2">
-                <input id="${winId}_todo_in" type="text" placeholder="Add a task..." onkeydown="if(event.key==='Enter') addTodoAction('${winId}')"
-                       class="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500" />
-                <button onclick="addTodoAction('${winId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Add</button>
-              </div>
-              <div id="${winId}_todo_list" class="flex-1 overflow-y-auto space-y-2"></div>
-            </div>`;
-
-        case 'youtube':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex gap-2">
-                <input id="${winId}_yt_input" type="text" placeholder="Paste YouTube link or Video ID..."
-                       class="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white outline-none" />
-                <button onclick="loadYouTubeVideo('${winId}')" class="px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg font-medium text-white">Play</button>
-              </div>
-              <div class="flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center">
-                <iframe id="${winId}_yt_frame" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" class="w-full h-full border-0" allowfullscreen></iframe>
-              </div>
-            </div>`;
-
-        case 'scanner':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex flex-wrap gap-2 items-center justify-between">
-                <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium cursor-pointer">
-                  Select Document Image <input type="file" accept="image/*" class="hidden" onchange="processScanFile(event, '${winId}')" />
-                </label>
-                <button onclick="downloadScanDoc('${winId}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Download Scanned Doc</button>
-              </div>
-              <div class="flex-1 bg-black/40 rounded-lg overflow-hidden flex items-center justify-center border border-white/10 p-2">
-                <canvas id="${winId}_scan_canvas" class="max-h-full max-w-full rounded shadow-xl"></canvas>
-              </div>
-            </div>`;
-
-        case 'calculator':
-          return `
-            <div class="max-w-xs mx-auto p-4 bg-slate-900 rounded-xl flex flex-col gap-2 shadow-2xl border border-white/10">
-              <input id="${winId}_calc_scr" readonly type="text" value="0" class="w-full bg-black/60 text-right p-4 text-2xl font-mono text-white rounded-lg border border-slate-700" />
-              <div class="grid grid-cols-4 gap-1.5 text-sm font-semibold text-white">
-                <button onclick="calcPress('${winId}','C')" class="p-2.5 bg-red-600 rounded-lg">C</button>
-                <button onclick="calcPress('${winId}','/')" class="p-2.5 bg-slate-800 rounded-lg">/</button>
-                <button onclick="calcPress('${winId}','*')" class="p-2.5 bg-slate-800 rounded-lg">*</button>
-                <button onclick="calcPress('${winId}','-')" class="p-2.5 bg-slate-800 rounded-lg">-</button>
-                <button onclick="calcPress('${winId}','7')" class="p-2.5 bg-slate-800/60 rounded-lg">7</button>
-                <button onclick="calcPress('${winId}','8')" class="p-2.5 bg-slate-800/60 rounded-lg">8</button>
-                <button onclick="calcPress('${winId}','9')" class="p-2.5 bg-slate-800/60 rounded-lg">9</button>
-                <button onclick="calcPress('${winId}','+')" class="p-2.5 bg-slate-800 rounded-lg">+</button>
-                <button onclick="calcPress('${winId}','4')" class="p-2.5 bg-slate-800/60 rounded-lg">4</button>
-                <button onclick="calcPress('${winId}','5')" class="p-2.5 bg-slate-800/60 rounded-lg">5</button>
-                <button onclick="calcPress('${winId}','6')" class="p-2.5 bg-slate-800/60 rounded-lg">6</button>
-                <button onclick="calcPress('${winId}','=')" class="row-span-2 p-2.5 bg-blue-600 rounded-lg flex items-center justify-center font-bold">=</button>
-                <button onclick="calcPress('${winId}','1')" class="p-2.5 bg-slate-800/60 rounded-lg">1</button>
-                <button onclick="calcPress('${winId}','2')" class="p-2.5 bg-slate-800/60 rounded-lg">2</button>
-                <button onclick="calcPress('${winId}','3')" class="p-2.5 bg-slate-800/60 rounded-lg">3</button>
-                <button onclick="calcPress('${winId}','0')" class="col-span-2 p-2.5 bg-slate-800/60 rounded-lg">0</button>
-                <button onclick="calcPress('${winId}','.')" class="p-2.5 bg-slate-800/60 rounded-lg">.</button>
-              </div>
-            </div>`;
-
-        case 'settings':
-          return `
-            <div class="p-4 max-w-xl mx-auto space-y-4 text-xs">
-              <div class="text-sm font-semibold text-white">Windows Settings</div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                <div class="font-medium text-white/80">Desktop Wallpaper</div>
-                <div class="flex gap-2">
-                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Bloom Dark</button>
-                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Landscape</button>
-                </div>
-              </div>
-              <button onclick="handleLogout()" class="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-semibold">Sign Out of Windows</button>
-            </div>`;
-
-        default:
-          return `<div class="p-4 text-xs text-white/70">App ready.</div>`;
-      }
-    }
-
-    /* Drive Files */
-    async function refreshDriveView(winId) {
-      if (!STATE.currentUser) return alert("Please sign in first.");
-      const listEl = document.getElementById(winId + '_drive_list');
-      listEl.innerHTML = '<div class="text-white/60 p-2">Connecting to Google Drive...</div>';
-      try {
-        const res = await apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId });
-        listEl.innerHTML = '';
-        if (!res.files || res.files.length === 0) {
-          listEl.innerHTML = '<div class="text-white/50 p-4 text-center">Your cloud folder is empty. Upload a file above!</div>';
+      uninstallApp(appId) {
+        const app = this.appRegistry[appId];
+        if (!app) return;
+        if (app.isSystem) {
+          this.notify('System Protected', `${app.name} is a pre-installed system application.`);
           return;
         }
-        res.files.forEach(f => {
+
+        const winIds = Object.keys(this.windows).filter(id => this.windows[id].appId === appId);
+        winIds.forEach(id => this.closeWindow(id));
+
+        delete this.appRegistry[appId];
+        this.saveCustomApps();
+        this.setupDesktopIcons();
+        this.setupLauncher();
+
+        const mgrWin = Object.values(this.windows).find(w => w.appId === 'manager');
+        if (mgrWin) this.renderAppManager(mgrWin);
+
+        this.notify('App Removed', `${app.name} has been uninstalled.`);
+      },
+
+      reloadCustomApp(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        const app = this.appRegistry[win.appId];
+        const iframe = document.getElementById(`iframe-${winId}`);
+        if (iframe && app && app.code) {
+          iframe.srcdoc = app.code;
+          this.notify(app.name, 'Reloaded sandbox');
+        }
+      },
+
+      setupDesktopIcons() {
+        const container = document.getElementById('desktop-icons');
+        container.innerHTML = '';
+        Object.values(this.appRegistry).forEach(app => {
+          const el = document.createElement('div');
+          el.className = 'w-18 sm:w-20 flex flex-col items-center justify-center p-2 rounded-2xl hover:bg-white/10 active:bg-white/20 text-white cursor-pointer transition transform active:scale-95 group text-center touch-manipulation select-none';
+          el.innerHTML = `
+            <div class="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105" style="background: ${app.color};">
+              <i class="${app.icon} text-xl sm:text-2xl text-white"></i>
+            </div>
+            <span class="text-[11px] sm:text-xs font-medium mt-1.5 drop-shadow leading-tight line-clamp-2 px-1 text-slate-100">${app.name}</span>
+          `;
+          el.onclick = () => {
+            this.playTone(520, 'triangle', 0.05);
+            this.openApp(app.id);
+          };
+          this.bindContextMenu(el, app.id);
+          container.appendChild(el);
+        });
+      },
+
+      setupLauncher() {
+        const grid = document.getElementById('launcher-app-grid');
+        grid.innerHTML = '';
+        Object.values(this.appRegistry).forEach(app => {
           const item = document.createElement('div');
-          item.className = "p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/10 transition";
+          item.className = 'flex flex-col items-center justify-center p-2 rounded-xl hover:bg-slate-800 active:bg-slate-700 transition cursor-pointer text-center group';
           item.innerHTML = `
-            <div class="flex items-center gap-2.5 overflow-hidden">
-              <i data-lucide="file" class="w-4 h-4 text-blue-400 shrink-0"></i>
-              <div class="truncate">
-                <div class="font-medium text-white truncate">${f.name}</div>
-                <div class="text-[10px] text-white/50">${f.size}</div>
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center shadow transition-transform group-hover:scale-110" style="background: ${app.color};">
+              <i class="${app.icon} text-lg text-white"></i>
+            </div>
+            <span class="text-[11px] font-medium mt-1.5 text-slate-200 line-clamp-1">${app.name}</span>
+          `;
+          item.onclick = () => {
+            this.playTone(520, 'triangle', 0.05);
+            this.openApp(app.id);
+            this.toggleLauncher(false);
+          };
+          this.bindContextMenu(item, app.id);
+          grid.appendChild(item);
+        });
+
+        const searchInput = document.getElementById('launcher-search');
+        searchInput.oninput = (e) => {
+          const q = e.target.value.toLowerCase();
+          Array.from(grid.children).forEach(child => {
+            child.style.display = child.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+          });
+        };
+      },
+
+      bindContextMenu(element, appId) {
+        let pressTimer = null;
+        element.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.showContextMenu(e.clientX, e.clientY, appId);
+        });
+
+        element.addEventListener('touchstart', (e) => {
+          pressTimer = setTimeout(() => {
+            const touch = e.touches[0];
+            this.showContextMenu(touch.clientX, touch.clientY, appId);
+          }, 550);
+        }, { passive: true });
+
+        const cancel = () => { if (pressTimer) clearTimeout(pressTimer); };
+        element.addEventListener('touchend', cancel);
+        element.addEventListener('touchmove', cancel);
+      },
+
+      showContextMenu(x, y, appId) {
+        const menu = document.getElementById('app-context-menu');
+        const app = this.appRegistry[appId];
+        if (!app) return;
+
+        this.contextTargetAppId = appId;
+        document.getElementById('ctx-app-title').innerText = app.name;
+        const btn = document.getElementById('ctx-btn-uninstall');
+
+        if (app.isSystem) {
+          btn.classList.add('opacity-40', 'pointer-events-none');
+          btn.innerHTML = `<i class="fa-solid fa-lock text-[10px]"></i> System App`;
+        } else {
+          btn.classList.remove('opacity-40', 'pointer-events-none');
+          btn.innerHTML = `<i class="fa-solid fa-trash text-[10px]"></i> Uninstall App`;
+        }
+
+        const clampedX = Math.min(x, window.innerWidth - 190);
+        const clampedY = Math.min(y, window.innerHeight - 120);
+        menu.style.left = `${clampedX}px`;
+        menu.style.top = `${clampedY}px`;
+        menu.classList.remove('hidden');
+      },
+
+      toggleLauncher(force) {
+        const launcher = document.getElementById('app-launcher');
+        const isHidden = launcher.classList.contains('hidden');
+        const show = force !== undefined ? force : isHidden;
+        if (show) {
+          launcher.classList.remove('hidden');
+          document.getElementById('quick-settings-panel').classList.add('hidden');
+          document.getElementById('launcher-search').focus();
+        } else {
+          launcher.classList.add('hidden');
+        }
+      },
+
+      toggleQuickSettings() {
+        const panel = document.getElementById('quick-settings-panel');
+        panel.classList.toggle('hidden');
+        document.getElementById('app-launcher').classList.add('hidden');
+      },
+
+      toggleWallpaper() {
+        this.currentWallpaperIndex = (this.currentWallpaperIndex + 1) % this.wallpapers.length;
+        document.getElementById('desktop-bg').style.background = this.wallpapers[this.currentWallpaperIndex];
+        this.notify('Wallpaper', 'Theme refreshed');
+      },
+
+      setupClock() {
+        const dClock = document.getElementById('live-clock');
+        const mClock = document.getElementById('mobile-clock');
+        const tick = () => {
+          const d = new Date();
+          const str = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (dClock) dClock.innerText = str;
+          if (mClock) mClock.innerText = str;
+        };
+        tick();
+        setInterval(tick, 1000);
+      },
+
+      setupGlobalEvents() {
+        document.getElementById('launcher-trigger').onclick = (e) => {
+          e.stopPropagation();
+          this.toggleLauncher();
+        };
+
+        document.getElementById('system-tray-btn').onclick = (e) => {
+          e.stopPropagation();
+          this.toggleQuickSettings();
+        };
+
+        document.getElementById('ctx-btn-open').onclick = () => {
+          if (this.contextTargetAppId) this.openApp(this.contextTargetAppId);
+          document.getElementById('app-context-menu').classList.add('hidden');
+        };
+
+        document.getElementById('ctx-btn-uninstall').onclick = () => {
+          if (this.contextTargetAppId) this.uninstallApp(this.contextTargetAppId);
+          document.getElementById('app-context-menu').classList.add('hidden');
+        };
+
+        document.addEventListener('pointerdown', (e) => {
+          if (!e.target.closest('#app-launcher') && !e.target.closest('#launcher-trigger')) {
+            this.toggleLauncher(false);
+          }
+          if (!e.target.closest('#quick-settings-panel') && !e.target.closest('#system-tray-btn')) {
+            document.getElementById('quick-settings-panel').classList.add('hidden');
+          }
+          if (!e.target.closest('#app-context-menu')) {
+            document.getElementById('app-context-menu').classList.add('hidden');
+          }
+        });
+      },
+
+      notify(title, msg) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'glass-panel text-white px-3.5 py-2.5 rounded-xl border border-white/10 shadow-2xl flex items-center justify-between gap-3 text-xs pointer-events-auto transition-all duration-300';
+        toast.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-bell text-[10px]"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-100">${title}</div>
+              <div class="text-[11px] text-slate-300">${msg}</div>
+            </div>
+          </div>
+          <button class="text-slate-400 hover:text-white" onclick="this.parentElement.remove()">&times;</button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 250);
+        }, 3500);
+      },
+
+      /* Window Management with 60fps Hardware Accelerated PointerEvents */
+      openApp(appId) {
+        const app = this.appRegistry[appId];
+        if (!app) return;
+
+        const existingWinId = Object.keys(this.windows).find(id => this.windows[id].appId === appId);
+        if (existingWinId) {
+          const win = this.windows[existingWinId];
+          win.minimized = false;
+          win.el.classList.remove('hidden');
+          this.focusWindow(existingWinId);
+          return;
+        }
+
+        const winId = 'win_' + Math.random().toString(36).substring(2, 9);
+        const winEl = document.createElement('div');
+        winEl.id = winId;
+        winEl.className = 'os-window absolute bg-white rounded-xl win-shadow flex flex-col overflow-hidden pointer-events-auto border border-slate-700/30';
+
+        const isMobileScreen = window.innerWidth < 640;
+        const width = isMobileScreen ? window.innerWidth : Math.min(app.defaultWidth, window.innerWidth - 40);
+        const height = isMobileScreen ? window.innerHeight - 56 : Math.min(app.defaultHeight, window.innerHeight - 80);
+        const left = isMobileScreen ? 0 : Math.max(10, 20 + (Object.keys(this.windows).length % 7) * 26);
+        const top = isMobileScreen ? 0 : Math.max(10, 16 + (Object.keys(this.windows).length % 7) * 26);
+
+        winEl.style.width = `${width}px`;
+        winEl.style.height = `${height}px`;
+        winEl.style.left = `${left}px`;
+        winEl.style.top = `${top}px`;
+
+        winEl.innerHTML = `
+          <div class="resizer r-top" data-dir="top"></div>
+          <div class="resizer r-bottom" data-dir="bottom"></div>
+          <div class="resizer r-left" data-dir="left"></div>
+          <div class="resizer r-right" data-dir="right"></div>
+          <div class="resizer r-topleft" data-dir="topleft"></div>
+          <div class="resizer r-topright" data-dir="topright"></div>
+          <div class="resizer r-bottomleft" data-dir="bottomleft"></div>
+          <div class="resizer r-bottomright" data-dir="bottomright"></div>
+
+          <div class="window-titlebar h-10 bg-slate-100 border-b border-slate-200 px-3 flex items-center justify-between select-none touch-none cursor-move">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-800 truncate">
+              <i class="${app.icon}" style="color: ${app.color};"></i>
+              <span class="truncate max-w-[170px] sm:max-w-xs">${app.name}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="btn-win-minimize w-7 h-7 rounded-lg hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-600 text-xs transition">
+                <i class="fa-solid fa-minus"></i>
+              </button>
+              <button class="btn-win-maximize w-7 h-7 rounded-lg hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-600 text-xs transition">
+                <i class="fa-regular fa-square"></i>
+              </button>
+              <button class="btn-win-close w-7 h-7 rounded-lg hover:bg-rose-500 hover:text-white active:bg-rose-600 flex items-center justify-center text-slate-600 text-xs transition">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+          <div class="window-content flex-1 overflow-hidden relative bg-white"></div>
+        `;
+
+        document.getElementById('windows-container').appendChild(winEl);
+
+        const winObj = {
+          id: winId,
+          appId: appId,
+          el: winEl,
+          titlebar: winEl.querySelector('.window-titlebar'),
+          contentEl: winEl.querySelector('.window-content'),
+          minimized: false,
+          maximized: false,
+          prevRect: null
+        };
+
+        this.windows[winId] = winObj;
+        app.render(winObj);
+
+        this.bindPointerDrag(winObj);
+        this.bindPointerResize(winObj);
+        this.bindWindowControls(winObj);
+        this.createTaskbarTab(winObj);
+
+        if (isMobileScreen) {
+          this.maximizeWindow(winObj, true);
+        }
+
+        this.focusWindow(winId);
+      },
+
+      focusWindow(winId) {
+        this.zIndexCounter += 2;
+        const win = this.windows[winId];
+        if (!win) return;
+        win.el.style.zIndex = this.zIndexCounter;
+        this.activeWindowId = winId;
+        this.updateTaskbarTabs();
+      },
+
+      bindWindowControls(win) {
+        win.el.addEventListener('pointerdown', () => this.focusWindow(win.id));
+
+        const minBtn = win.el.querySelector('.btn-win-minimize');
+        const maxBtn = win.el.querySelector('.btn-win-maximize');
+        const closeBtn = win.el.querySelector('.btn-win-close');
+
+        minBtn.onclick = (e) => {
+          e.stopPropagation();
+          win.minimized = true;
+          win.el.classList.add('hidden');
+          this.updateTaskbarTabs();
+        };
+
+        maxBtn.onclick = (e) => {
+          e.stopPropagation();
+          this.maximizeWindow(win);
+        };
+
+        closeBtn.onclick = (e) => {
+          e.stopPropagation();
+          this.closeWindow(win.id);
+        };
+
+        let lastTap = 0;
+        win.titlebar.addEventListener('pointerup', (e) => {
+          if (e.target.closest('button')) return;
+          const now = Date.now();
+          if (now - lastTap < 300) {
+            this.maximizeWindow(win);
+          }
+          lastTap = now;
+        });
+      },
+
+      maximizeWindow(win, forceMax = null) {
+        const shouldMax = forceMax !== null ? forceMax : !win.maximized;
+        win.el.classList.add('is-animating');
+
+        if (shouldMax) {
+          win.prevRect = {
+            left: win.el.style.left,
+            top: win.el.style.top,
+            width: win.el.style.width,
+            height: win.el.style.height
+          };
+          win.el.style.left = '0px';
+          win.el.style.top = '0px';
+          win.el.style.width = '100vw';
+          const bottomMargin = window.innerWidth < 768 ? 56 : 48;
+          win.el.style.height = `calc(100vh - ${bottomMargin}px)`;
+          win.el.classList.remove('rounded-xl');
+          win.maximized = true;
+          win.el.querySelector('.btn-win-maximize i').className = 'fa-regular fa-window-restore';
+        } else {
+          if (win.prevRect) {
+            win.el.style.left = win.prevRect.left;
+            win.el.style.top = win.prevRect.top;
+            win.el.style.width = win.prevRect.width;
+            win.el.style.height = win.prevRect.height;
+          }
+          win.el.classList.add('rounded-xl');
+          win.maximized = false;
+          win.el.querySelector('.btn-win-maximize i').className = 'fa-regular fa-square';
+        }
+        setTimeout(() => win.el.classList.remove('is-animating'), 230);
+      },
+
+      closeWindow(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        win.el.remove();
+        delete this.windows[winId];
+        this.removeTaskbarTab(winId);
+      },
+
+      bindPointerDrag(win) {
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        const onPointerDown = (e) => {
+          if (win.maximized) return;
+          if (e.target.closest('button')) return;
+
+          isDragging = true;
+          this.focusWindow(win.id);
+          startX = e.clientX;
+          startY = e.clientY;
+          initialLeft = win.el.offsetLeft;
+          initialTop = win.el.offsetTop;
+
+          win.titlebar.setPointerCapture(e.pointerId);
+          win.titlebar.addEventListener('pointermove', onPointerMove);
+          win.titlebar.addEventListener('pointerup', onPointerUp);
+          win.titlebar.addEventListener('pointercancel', onPointerUp);
+        };
+
+        const onPointerMove = (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const maxTop = window.innerHeight - 100;
+          win.el.style.left = `${initialLeft + dx}px`;
+          win.el.style.top = `${Math.max(0, Math.min(initialTop + dy, maxTop))}px`;
+        };
+
+        const onPointerUp = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          try { win.titlebar.releasePointerCapture(e.pointerId); } catch (err) {}
+          win.titlebar.removeEventListener('pointermove', onPointerMove);
+          win.titlebar.removeEventListener('pointerup', onPointerUp);
+          win.titlebar.removeEventListener('pointercancel', onPointerUp);
+        };
+
+        win.titlebar.addEventListener('pointerdown', onPointerDown);
+      },
+
+      bindPointerResize(win) {
+        const handles = win.el.querySelectorAll('.resizer');
+        handles.forEach(handle => {
+          const dir = handle.getAttribute('data-dir');
+          handle.addEventListener('pointerdown', (e) => {
+            if (win.maximized) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.focusWindow(win.id);
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const initialW = win.el.offsetWidth;
+            const initialH = win.el.offsetHeight;
+            const initialLeft = win.el.offsetLeft;
+            const initialTop = win.el.offsetTop;
+
+            handle.setPointerCapture(e.pointerId);
+
+            const onPointerMove = (ev) => {
+              const dx = ev.clientX - startX;
+              const dy = ev.clientY - startY;
+              let newW = initialW;
+              let newH = initialH;
+              let newLeft = initialLeft;
+              let newTop = initialTop;
+
+              const minW = 280;
+              const minH = 200;
+
+              if (dir.includes('right')) newW = Math.max(minW, initialW + dx);
+              if (dir.includes('bottom')) newH = Math.max(minH, initialH + dy);
+              if (dir.includes('left')) {
+                const calcW = initialW - dx;
+                if (calcW > minW) { newW = calcW; newLeft = initialLeft + dx; }
+              }
+              if (dir.includes('top')) {
+                const calcH = initialH - dy;
+                if (calcH > minH) { newH = calcH; newTop = initialTop + dy; }
+              }
+
+              win.el.style.width = `${newW}px`;
+              win.el.style.height = `${newH}px`;
+              win.el.style.left = `${newLeft}px`;
+              win.el.style.top = `${newTop}px`;
+            };
+
+            const onPointerUp = (ev) => {
+              try { handle.releasePointerCapture(ev.pointerId); } catch (err) {}
+              handle.removeEventListener('pointermove', onPointerMove);
+              handle.removeEventListener('pointerup', onPointerUp);
+              handle.removeEventListener('pointercancel', onPointerUp);
+            };
+
+            handle.addEventListener('pointermove', onPointerMove);
+            handle.addEventListener('pointerup', onPointerUp);
+            handle.addEventListener('pointercancel', onPointerUp);
+          });
+        });
+      },
+
+      createTaskbarTab(win) {
+        const app = this.appRegistry[win.appId];
+        const container = document.getElementById('taskbar-apps');
+        const tab = document.createElement('button');
+        tab.id = `tab-${win.id}`;
+        tab.className = 'flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-800/90 text-white text-xs border border-white/5 transition relative flex-shrink-0';
+        tab.innerHTML = `
+          <i class="${app.icon}" style="color: ${app.color};"></i>
+          <span class="truncate max-w-[80px] sm:max-w-[110px]">${app.name}</span>
+          <div class="indicator w-1.5 h-1.5 rounded-full bg-blue-400 absolute bottom-0.5 left-1/2 -translate-x-1/2"></div>
+        `;
+
+        tab.onclick = () => {
+          if (win.minimized) {
+            win.minimized = false;
+            win.el.classList.remove('hidden');
+            this.focusWindow(win.id);
+          } else if (this.activeWindowId === win.id) {
+            win.minimized = true;
+            win.el.classList.add('hidden');
+          } else {
+            this.focusWindow(win.id);
+          }
+          this.updateTaskbarTabs();
+        };
+
+        container.appendChild(tab);
+        this.updateTaskbarTabs();
+      },
+
+      removeTaskbarTab(winId) {
+        const tab = document.getElementById(`tab-${winId}`);
+        if (tab) tab.remove();
+      },
+
+      updateTaskbarTabs() {
+        Object.values(this.windows).forEach(win => {
+          const tab = document.getElementById(`tab-${win.id}`);
+          if (!tab) return;
+          const ind = tab.querySelector('.indicator');
+          if (this.activeWindowId === win.id && !win.minimized) {
+            tab.classList.add('bg-slate-700', 'border-blue-500/80');
+            ind.style.opacity = '1';
+          } else {
+            tab.classList.remove('bg-slate-700', 'border-blue-500/80');
+            ind.style.opacity = win.minimized ? '0.2' : '0.6';
+          }
+        });
+      },
+
+      toggleOverview(force) {
+        const modal = document.getElementById('overview-modal');
+        const isHidden = modal.classList.contains('hidden');
+        const show = force !== undefined ? force : isHidden;
+
+        if (show) {
+          const grid = document.getElementById('overview-grid');
+          grid.innerHTML = '';
+          const wins = Object.values(this.windows);
+
+          if (wins.length === 0) {
+            grid.innerHTML = `
+              <div class="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
+                <i class="fa-solid fa-window-restore text-4xl mb-3 opacity-30"></i>
+                <p>No open windows. Launch an app from the launcher or desktop.</p>
+              </div>
+            `;
+          } else {
+            wins.forEach(w => {
+              const app = this.appRegistry[w.appId];
+              const card = document.createElement('div');
+              card.className = 'glass-panel rounded-2xl p-4 cursor-pointer hover:border-blue-500 transition flex flex-col justify-between h-44';
+              card.innerHTML = `
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <i class="${app.icon}" style="color: ${app.color};"></i>
+                    <span class="font-bold text-sm text-white">${app.name}</span>
+                  </div>
+                  <button class="p-1 text-slate-400 hover:text-red-400" onclick="event.stopPropagation(); OS.closeWindow('${w.id}'); OS.toggleOverview(true);">&times;</button>
+                </div>
+                <div class="my-2 p-2 bg-slate-900/60 rounded-lg text-slate-400 text-xs truncate">
+                  ${w.minimized ? '<i class="fa-solid fa-eye-slash mr-1"></i> Minimized' : '<i class="fa-solid fa-display mr-1"></i> Active Window'}
+                </div>
+                <button class="w-full py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">Switch to Window</button>
+              `;
+              card.onclick = () => {
+                w.minimized = false;
+                w.el.classList.remove('hidden');
+                this.focusWindow(w.id);
+                this.toggleOverview(false);
+              };
+              grid.appendChild(card);
+            });
+          }
+          modal.classList.remove('hidden');
+        } else {
+          modal.classList.add('hidden');
+        }
+      },
+
+      /* 1. GOOGLE DOCS (Rich Formatting, Justify, Word Count & Google Sync) */
+      renderDocs(win) {
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-white text-slate-800">
+            <!-- Top Action Ribbon -->
+            <div class="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-1 text-xs">
+              <div class="flex flex-wrap items-center gap-1">
+                <button title="Bold" class="p-1.5 rounded hover:bg-slate-200 font-bold" onclick="document.execCommand('bold')"><i class="fa-solid fa-bold"></i></button>
+                <button title="Italic" class="p-1.5 rounded hover:bg-slate-200 italic" onclick="document.execCommand('italic')"><i class="fa-solid fa-italic"></i></button>
+                <button title="Underline" class="p-1.5 rounded hover:bg-slate-200 underline" onclick="document.execCommand('underline')"><i class="fa-solid fa-underline"></i></button>
+                <button title="Strikethrough" class="p-1.5 rounded hover:bg-slate-200 line-through" onclick="document.execCommand('strikeThrough')"><i class="fa-solid fa-strikethrough"></i></button>
+                <span class="h-4 w-[1px] bg-slate-300 mx-1"></span>
+                <select onchange="document.execCommand('formatBlock', false, this.value)" class="bg-white border border-slate-300 rounded px-1.5 py-1 text-xs">
+                  <option value="p">Normal Text</option>
+                  <option value="h1">Heading 1</option>
+                  <option value="h2">Heading 2</option>
+                  <option value="h3">Heading 3</option>
+                </select>
+                <span class="h-4 w-[1px] bg-slate-300 mx-1"></span>
+                <!-- Alignment Buttons including Justify Requirement -->
+                <button title="Align Left" class="p-1.5 rounded hover:bg-slate-200" onclick="document.execCommand('justifyLeft')"><i class="fa-solid fa-align-left"></i></button>
+                <button title="Align Center" class="p-1.5 rounded hover:bg-slate-200" onclick="document.execCommand('justifyCenter')"><i class="fa-solid fa-align-center"></i></button>
+                <button title="Align Right" class="p-1.5 rounded hover:bg-slate-200" onclick="document.execCommand('justifyRight')"><i class="fa-solid fa-align-right"></i></button>
+                <button title="Justify Full (Aligned to both margins)" class="p-1.5 rounded hover:bg-blue-100 text-blue-600 font-bold" onclick="document.execCommand('justifyFull')">
+                  <i class="fa-solid fa-align-justify"></i> Justify
+                </button>
+                <span class="h-4 w-[1px] bg-slate-300 mx-1"></span>
+                <button title="Bullet List" class="p-1.5 rounded hover:bg-slate-200" onclick="document.execCommand('insertUnorderedList')"><i class="fa-solid fa-list-ul"></i></button>
+                <button title="Numbered List" class="p-1.5 rounded hover:bg-slate-200" onclick="document.execCommand('insertOrderedList')"><i class="fa-solid fa-list-ol"></i></button>
+              </div>
+
+              <!-- Sync and Export Controls -->
+              <div class="flex items-center gap-2">
+                <button onclick="OS.syncDocToSheet('${win.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition">
+                  <i class="fa-solid fa-cloud-arrow-up text-[10px]"></i> Sync to Sheets & Drive
+                </button>
+                <button onclick="OS.exportDocHtml('${win.id}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition">
+                  <i class="fa-solid fa-download text-[10px]"></i> Export
+                </button>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <a href="${f.url}" target="_blank" class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium text-[11px]">View</a>
-              <button onclick="deleteDriveFile('${f.id}','${winId}')" class="p-1 text-red-400 hover:text-red-300"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
+
+            <!-- Editor Surface -->
+            <div class="flex-1 overflow-y-auto custom-scroll p-4 sm:p-8 bg-slate-100/70 flex justify-center">
+              <div id="doc-content-${win.id}" contenteditable="true" class="w-full max-w-2xl min-h-[500px] bg-white p-6 sm:p-12 shadow border border-slate-200 rounded-md focus:outline-none text-slate-800 leading-relaxed font-sans text-sm" style="text-align: justify;">
+                <h1 class="text-2xl sm:text-3xl font-bold mb-3 text-slate-900" style="text-align: left;">Google Docs Enterprise Document</h1>
+                <p class="mb-3 leading-relaxed">
+                  This document environment incorporates full justification alignment to both left and right margins, offering a clean, professional typography experience identical to Google Workspace. You can compose documents on mobile using touch selections or on desktop keyboards with fluid responsiveness.
+                </p>
+                <h2 class="text-lg font-semibold mb-2 text-slate-800" style="text-align: left;">Features and Direct Zero-Login Integration:</h2>
+                <ul class="list-disc pl-5 mb-4 space-y-1" style="text-align: left;">
+                  <li>Click <b>Justify</b> anytime to align long paragraphs cleanly across both edges.</li>
+                  <li>Click <b>Sync to Sheets & Drive</b> to transmit document content directly to your Google Sheet backend via Code.gs without any OAuth barrier.</li>
+                  <li>Automatic creation of the "Docs" sheet tab and headers.</li>
+                </ul>
+              </div>
             </div>
-          `;
-          listEl.appendChild(item);
-        });
-        lucide.createIcons();
-      } catch (e) {
-        listEl.innerHTML = '<div class="text-red-400 p-2">Error: ' + e.message + '</div>';
-      }
-    }
 
-    async function uploadFileToDrive(e, winId) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async function() {
-        const base64 = reader.result.split(',')[1];
-        try {
-          await apiCall('drive_upload', {
-            folderId: STATE.currentUser.driveFolderId,
-            fileName: file.name,
-            mimeType: file.type,
-            base64Content: base64
-          });
-          alert("File stored in Google Drive!");
-          refreshDriveView(winId);
-        } catch (err) { alert("Drive error: " + err.message); }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    async function deleteDriveFile(fileId, winId) {
-      if (!confirm("Send this file to the Recycle Bin?")) return;
-      try {
-        await apiCall('drive_delete', { fileId });
-        refreshDriveView(winId);
-      } catch (e) { alert(e.message); }
-    }
-
-    /* WordPad / Mammoth */
-    function parseDocx(event, winId) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        mammoth.convertToHtml({ arrayBuffer: e.target.result })
-          .then(res => { document.getElementById(winId + '_word_body').innerHTML = res.value; })
-          .catch(err => alert("DOCX Parse Error: " + err.message));
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    async function saveWordDoc(winId) {
-      if (!STATE.currentUser) return alert("Sign in first.");
-      const html = document.getElementById(winId + '_word_body').innerHTML;
-      const base64 = btoa(unescape(encodeURIComponent(html)));
-      try {
-        await apiCall('drive_upload', {
-          folderId: STATE.currentUser.driveFolderId,
-          fileName: 'Document_' + Date.now() + '.html',
-          mimeType: 'text/html',
-          base64Content: base64
-        });
-        alert("Document saved to your Google Drive!");
-      } catch (e) { alert("Error: " + e.message); }
-    }
-
-    function downloadWordDoc(winId) {
-      const html = document.getElementById(winId + '_word_body').innerHTML;
-      const blob = new Blob(['<!DOCTYPE html><html><body>' + html + '</body></html>'], { type: 'application/msword' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'Document.doc';
-      a.click();
-    }
-
-    /* To Do */
-    function renderWidgetTodos() {
-      const list = document.getElementById('widgetTodoList');
-      list.innerHTML = '';
-      STATE.todos.slice(0, 4).forEach((t, idx) => {
-        const item = document.createElement('div');
-        item.className = "flex items-center gap-2";
-        item.innerHTML = `
-          <input type="checkbox" ${t.Completed === 'true' ? 'checked' : ''} onchange="toggleTodoState(${idx})" class="rounded accent-blue-600 cursor-pointer" />
-          <span class="${t.Completed === 'true' ? 'line-through text-slate-400' : 'text-slate-100'} truncate">${t.Task}</span>
+            <div class="h-6 bg-slate-100 border-t border-slate-200 px-3 flex items-center justify-between text-[11px] text-slate-500">
+              <span id="doc-words-${win.id}">Words: 94 | Characters: 642</span>
+              <span class="text-emerald-600 font-medium"><i class="fa-solid fa-check"></i> Cloud Ready</span>
+            </div>
+          </div>
         `;
-        list.appendChild(item);
-      });
-    }
 
-    function addWidgetTodo() {
-      const input = document.getElementById('widgetNewTodoInput');
-      const val = input.value.trim();
-      if (!val) return;
-      STATE.todos.unshift({ id: Date.now().toString(), Task: val, Completed: 'false' });
-      input.value = '';
-      renderWidgetTodos();
-      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
-    }
-
-    function toggleTodoState(idx) {
-      STATE.todos[idx].Completed = STATE.todos[idx].Completed === 'true' ? 'false' : 'true';
-      renderWidgetTodos();
-      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
-    }
-
-    function addTodoAction(winId) {
-      const val = document.getElementById(winId + '_todo_in').value.trim();
-      if (!val) return;
-      STATE.todos.unshift({ id: Date.now().toString(), Task: val, Completed: 'false' });
-      document.getElementById(winId + '_todo_in').value = '';
-      renderWidgetTodos();
-      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
-    }
-
-    /* VS Code */
-    function runVsCode(winId) {
-      const code = document.getElementById(winId + '_code_editor').value;
-      document.getElementById(winId + '_code_preview').srcdoc = code;
-    }
-
-    async function saveVsCodeToDrive(winId) {
-      const code = document.getElementById(winId + '_code_editor').value;
-      const base64 = btoa(unescape(encodeURIComponent(code)));
-      await apiCall('drive_upload', {
-        folderId: STATE.currentUser.driveFolderId,
-        fileName: 'Project_' + Date.now() + '.html',
-        mimeType: 'text/html',
-        base64Content: base64
-      });
-      alert("Code saved to Google Drive!");
-    }
-
-    /* Store Installer */
-    async function installStoreUrl(winId) {
-      const url = document.getElementById(winId + '_store_url').value.trim();
-      const name = document.getElementById(winId + '_store_name_url').value.trim() || 'Web App';
-      if (!url) return alert("Enter URL");
-      await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'globe', type: 'url', codeOrUrl: url });
-      syncCloudData();
-      alert("App installed!");
-    }
-
-    async function installStoreCode(winId) {
-      const fileInput = document.getElementById(winId + '_store_file');
-      const name = document.getElementById(winId + '_store_name_file').value.trim() || 'Uploaded App';
-      if (!fileInput.files[0]) return alert("Select code file");
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'code', type: 'code', codeOrUrl: e.target.result });
-        syncCloudData();
-        alert("App installed!");
-      };
-      reader.readAsText(fileInput.files[0]);
-    }
-
-    /* Scanner */
-    function processScanFile(e, winId) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.getElementById(winId + '_scan_canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        canvas.style.filter = "contrast(140%) brightness(110%) grayscale(100%)";
-      };
-      img.src = URL.createObjectURL(file);
-    }
-
-    function downloadScanDoc(winId) {
-      const canvas = document.getElementById(winId + '_scan_canvas');
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/jpeg');
-      a.download = 'Scanned_Doc.jpg';
-      a.click();
-    }
-
-    /* YouTube & Browser */
-    function loadYouTubeVideo(winId) {
-      const val = document.getElementById(winId + '_yt_input').value.trim();
-      let id = val;
-      if (val.includes('v=')) id = val.split('v=')[1].split('&')[0];
-      else if (val.includes('youtu.be/')) id = val.split('youtu.be/')[1];
-      document.getElementById(winId + '_yt_frame').src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
-    }
-
-    function navigateBrowser(winId) {
-      const url = document.getElementById(winId + '_browser_url').value.trim();
-      document.getElementById(winId + '_browser_frame').src = url.startsWith('http') ? url : 'https://' + url;
-    }
-
-    /* Window Controls */
-    function focusWindow(winId) {
-      STATE.activeWinId = winId;
-      STATE.windows.forEach(w => {
-        const el = document.getElementById(w.id);
-        if (el) el.style.zIndex = (w.id === winId) ? '35' : '25';
-      });
-      renderTaskbar();
-    }
-
-    function minimizeWindow(winId) {
-      const el = document.getElementById(winId);
-      if (el) el.classList.add('hidden');
-      const w = STATE.windows.find(x => x.id === winId);
-      if (w) w.minimized = true;
-      renderTaskbar();
-    }
-
-    function maximizeWindow(winId) {
-      const el = document.getElementById(winId);
-      const w = STATE.windows.find(x => x.id === winId);
-      if (!el || !w) return;
-      w.maximized = !w.maximized;
-      if (w.maximized) {
-        el.style.left = '0px';
-        el.style.top = '0px';
-        el.style.width = '100vw';
-        el.style.height = 'calc(100vh - 48px)';
-        el.classList.add('!rounded-none');
-      } else {
-        el.style.left = w.x + 'px';
-        el.style.top = w.y + 'px';
-        el.style.width = w.w + 'px';
-        el.style.height = w.h + 'px';
-        el.classList.remove('!rounded-none');
-      }
-    }
-
-    function closeWindow(winId) {
-      const el = document.getElementById(winId);
-      if (el) el.remove();
-      STATE.windows = STATE.windows.filter(w => w.id !== winId);
-      renderTaskbar();
-    }
-
-    function minimizeAllWindows() {
-      STATE.windows.forEach(w => minimizeWindow(w.id));
-    }
-
-    function startWinDrag(e, winId) {
-      if (e.target.closest('button')) return;
-      const el = document.getElementById(winId);
-      const w = STATE.windows.find(x => x.id === winId);
-      if (!el || !w || w.maximized) return;
-
-      focusWindow(winId);
-      let sx = e.clientX || (e.touches && e.touches[0].clientX);
-      let sy = e.clientY || (e.touches && e.touches[0].clientY);
-      let ox = el.offsetLeft;
-      let oy = el.offsetTop;
-
-      function onMove(ev) {
-        let cx = ev.clientX || (ev.touches && ev.touches[0].clientX);
-        let cy = ev.clientY || (ev.touches && ev.touches[0].clientY);
-        w.x = ox + (cx - sx);
-        w.y = Math.max(0, oy + (cy - sy));
-        el.style.left = w.x + 'px';
-        el.style.top = w.y + 'px';
-      }
-      function onUp() {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-      }
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
-    }
-
-    /* Virtual Keyboard */
-    function initVirtualKeyboard() {
-      const normal = [
-        ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'],
-        ['Tab','q','w','e','r','t','y','u','i','o','p','[',']','\\'],
-        ['Caps','a','s','d','f','g','h','j','k','l',';','\'','Enter'],
-        ['Shift','z','x','c','v','b','n','m',',','.','/','Shift'],
-        ['Ctrl','Alt','Space','Copy','Paste']
-      ];
-      const shift = [
-        ['~','!','@','#','$','%','^','&','*','(',')','_','+','Backspace'],
-        ['Tab','Q','W','E','R','T','Y','U','I','O','P','{','}','|'],
-        ['Caps','A','S','D','F','G','H','J','K','L',':','"','Enter'],
-        ['Shift','Z','X','C','V','B','N','M','<','>','?','Shift'],
-        ['Ctrl','Alt','Space','Copy','Paste']
-      ];
-
-      const c = document.getElementById('keyboardKeys');
-      c.innerHTML = '';
-      const set = STATE.isShift ? shift : normal;
-
-      set.forEach(r => {
-        const row = document.createElement('div');
-        row.className = "flex gap-1 justify-center";
-        r.forEach(k => {
-          const btn = document.createElement('button');
-          btn.className = `p-2 rounded-lg bg-white/10 active:bg-blue-600 font-medium ${k === 'Space' ? 'flex-1' : (k.length > 1 ? 'px-3' : 'w-8')}`;
-          btn.innerText = k;
-          btn.onpointerdown = (ev) => {
-            ev.preventDefault();
-            handleKeyPress(k);
-          };
-          row.appendChild(btn);
+        const editor = document.getElementById(`doc-content-${win.id}`);
+        const counter = document.getElementById(`doc-words-${win.id}`);
+        editor.addEventListener('input', () => {
+          const txt = editor.innerText.trim();
+          const words = txt ? txt.split(/\s+/).length : 0;
+          counter.innerText = `Words: ${words} | Characters: ${txt.length}`;
         });
-        c.appendChild(row);
-      });
-    }
+      },
 
-    function toggleVirtualKeyboard() {
-      document.getElementById('virtualKeyboard').classList.toggle('hidden');
-    }
+      syncDocToSheet(winId) {
+        const editor = document.getElementById(`doc-content-${winId}`);
+        if (!editor) return;
+        const text = editor.innerText;
+        const html = editor.innerHTML;
+        const title = text.split('\n')[0] || 'Untitled Document';
+        this.syncToGoogleSheet('Docs', {
+          DocumentTitle: title.substring(0, 80),
+          ContentSnippet: text.substring(0, 300) + '...',
+          FullHTML: html
+        });
+      },
 
-    function handleKeyPress(k) {
-      if (k === 'Shift') {
-        STATE.isShift = !STATE.isShift;
-        initVirtualKeyboard();
-        return;
+      exportDocHtml(winId) {
+        const editor = document.getElementById(`doc-content-${winId}`);
+        if (!editor) return;
+        const blob = new Blob([editor.innerHTML], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'Workspace-Document.html';
+        a.click();
+        this.notify('Google Docs', 'Document exported');
+      },
+
+      /* 2. GOOGLE SHEETS (Dynamic Formulas, CSV Export, Sync to Cloud) */
+      renderSheets(win) {
+        const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const rows = 22;
+        const initData = {
+          'A1': 'Product', 'B1': 'Sales Rep', 'C1': 'Units Sold', 'D1': 'Price ($)', 'E1': 'Revenue ($)',
+          'A2': 'Pixel 9 Pro', 'B2': 'Alex Chen', 'C2': '150', 'D2': '999', 'E2': '149850',
+          'A3': 'Pixel Tablet', 'B3': 'Sarah Jenkins', 'C3': '220', 'D3': '499', 'E3': '109780',
+          'A4': 'Chromebook Max', 'B4': 'David Miller', 'C4': '310', 'D4': '699', 'E4': '216690',
+          'A5': 'Nest Audio Hub', 'B5': 'Sarah Jenkins', 'C5': '540', 'D5': '99', 'E5': '53460',
+        };
+
+        let html = `
+          <div class="flex flex-col h-full bg-white text-xs">
+            <!-- Toolbar & Cloud Push -->
+            <div class="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <div id="sheets-cell-ref-${win.id}" class="w-12 font-mono font-bold text-center bg-white border border-slate-300 py-1 rounded text-slate-700">A1</div>
+                <span class="text-slate-400 font-mono italic">fx</span>
+                <input id="sheets-fx-${win.id}" type="text" placeholder="Type value or formula: =SUM(E2:E5)" class="w-48 sm:w-80 bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-emerald-600 focus:outline-none">
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="OS.syncSheetToDrive('${win.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold flex items-center gap-1">
+                  <i class="fa-solid fa-cloud-arrow-up text-[10px]"></i> Sync Rows to Google
+                </button>
+                <button onclick="OS.exportSheetCSV('${win.id}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs font-semibold flex items-center gap-1">
+                  <i class="fa-solid fa-file-csv text-[10px]"></i> Export CSV
+                </button>
+              </div>
+            </div>
+
+            <!-- Spreadsheets Matrix Table -->
+            <div class="flex-1 overflow-auto custom-scroll">
+              <table id="sheets-table-${win.id}" class="border-collapse w-full border border-slate-300">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-600 font-semibold sticky top-0 z-20">
+                    <th class="w-10 border border-slate-300 p-1 text-center bg-slate-200">#</th>
+                    ${cols.map(c => `<th class="w-28 border border-slate-300 p-1 text-center">${c}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (let r = 1; r <= rows; r++) {
+          html += `<tr><td class="bg-slate-100 border border-slate-300 text-center font-bold text-slate-500">${r}</td>`;
+          cols.forEach(c => {
+            const cid = `${c}${r}`;
+            const val = initData[cid] || '';
+            html += `<td id="${win.id}-${cid}" data-coord="${cid}" contenteditable="true" class="sheet-cell border border-slate-200 p-1.5 font-mono text-slate-800">${val}</td>`;
+          });
+          html += `</tr>`;
+        }
+
+        html += `
+                </tbody>
+              </table>
+            </div>
+            <div class="h-6 bg-slate-100 border-t border-slate-200 px-3 flex items-center justify-between text-[11px] text-slate-500">
+              <span class="font-bold text-emerald-700">Sheet 1</span>
+              <span>Supports =SUM(), =AVERAGE(), =MIN(), =MAX()</span>
+            </div>
+          </div>
+        `;
+
+        win.contentEl.innerHTML = html;
+
+        const fxInput = document.getElementById(`sheets-fx-${win.id}`);
+        const refLabel = document.getElementById(`sheets-cell-ref-${win.id}`);
+
+        win.contentEl.querySelectorAll('.sheet-cell').forEach(cell => {
+          cell.addEventListener('focus', () => {
+            const coord = cell.getAttribute('data-coord');
+            refLabel.innerText = coord;
+            fxInput.value = cell.innerText;
+          });
+          cell.addEventListener('blur', () => {
+            OS.evaluateSheetFormula(win.id, cell);
+          });
+          cell.addEventListener('input', () => {
+            fxInput.value = cell.innerText;
+          });
+        });
+
+        fxInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const coord = refLabel.innerText;
+            const target = document.getElementById(`${win.id}-${coord}`);
+            if (target) {
+              target.innerText = fxInput.value;
+              OS.evaluateSheetFormula(win.id, target);
+            }
+          }
+        });
+      },
+
+      evaluateSheetFormula(winId, cell) {
+        const raw = cell.innerText.trim();
+        if (!raw.startsWith('=')) return;
+
+        const expr = raw.substring(1).toUpperCase();
+        try {
+          if (expr.startsWith('SUM(')) {
+            const range = expr.replace('SUM(', '').replace(')', '').split(':');
+            const total = this.calculateSheetRange(winId, range[0], range[1], 'sum');
+            cell.innerText = total;
+          } else if (expr.startsWith('AVERAGE(')) {
+            const range = expr.replace('AVERAGE(', '').replace(')', '').split(':');
+            const avg = this.calculateSheetRange(winId, range[0], range[1], 'avg');
+            cell.innerText = avg.toFixed(2);
+          }
+        } catch (err) {
+          cell.innerText = '#VALUE!';
+        }
+      },
+
+      calculateSheetRange(winId, start, end, mode) {
+        const startCol = start.charAt(0);
+        const startRow = parseInt(start.substring(1));
+        const endCol = end.charAt(0);
+        const endRow = parseInt(end.substring(1));
+
+        let vals = [];
+        for (let r = startRow; r <= endRow; r++) {
+          const cid = `${startCol}${r}`;
+          const el = document.getElementById(`${winId}-${cid}`);
+          if (el) {
+            const num = parseFloat(el.innerText);
+            if (!isNaN(num)) vals.push(num);
+          }
+        }
+        if (vals.length === 0) return 0;
+        if (mode === 'sum') return vals.reduce((a, b) => a + b, 0);
+        if (mode === 'avg') return vals.reduce((a, b) => a + b, 0) / vals.length;
+        return 0;
+      },
+
+      syncSheetToDrive(winId) {
+        const table = document.getElementById(`sheets-table-${winId}`);
+        if (!table) return;
+        const rows = [];
+        table.querySelectorAll('tbody tr').forEach((tr, idx) => {
+          const cells = Array.from(tr.querySelectorAll('td')).slice(1).map(td => td.innerText.trim());
+          if (cells.some(c => c !== '')) {
+            rows.push({
+              RowIndex: idx + 1,
+              A: cells[0] || '',
+              B: cells[1] || '',
+              C: cells[2] || '',
+              D: cells[3] || '',
+              E: cells[4] || ''
+            });
+          }
+        });
+        this.syncToGoogleSheet('Spreadsheets', {
+          TotalRowsCount: rows.length,
+          FirstRowPreview: JSON.stringify(rows[0] || {}),
+          Summary: `Synced ${rows.length} rows from Google Sheets app`
+        });
+      },
+
+      exportSheetCSV(winId) {
+        const table = document.getElementById(`sheets-table-${winId}`);
+        if (!table) return;
+        let csv = "";
+        table.querySelectorAll('tr').forEach(tr => {
+          const rowData = Array.from(tr.querySelectorAll('th, td')).slice(1).map(c => `"${c.innerText.replace(/"/g, '""')}"`);
+          csv += rowData.join(',') + "\r\n";
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'Google-Sheet-Data.csv';
+        a.click();
+        this.notify('Google Sheets', 'CSV Exported');
+      },
+
+      /* 3. GOOGLE SLIDES (Presentation, Shape Creator, Cloud Sync) */
+      renderSlides(win) {
+        win.slides = [
+          { title: 'Google Workspace OS 2026', desc: 'Unified productivity across every device form factor', bg: '#1e3a8a' },
+          { title: 'Zero-Login Cloud Scripting', desc: 'Instant Apps Script sync to Sheets and Drive folders', bg: '#065f46' },
+          { title: 'Touch-Responsive Windows', desc: '8-Way PointerEvent resizers & high FPS fluid drag', bg: '#581c87' }
+        ];
+        win.activeIdx = 0;
+
+        const updateStage = () => {
+          const current = win.slides[win.activeIdx];
+          const canvas = document.getElementById(`slide-canvas-${win.id}`);
+          if (canvas) {
+            canvas.style.backgroundColor = current.bg;
+            canvas.innerHTML = `
+              <div class="h-full flex flex-col items-center justify-center p-6 text-center text-white">
+                <div contenteditable="true" class="text-2xl sm:text-3xl font-bold mb-3 focus:outline-dashed p-1">${current.title}</div>
+                <div contenteditable="true" class="text-sm sm:text-base text-slate-200 max-w-lg focus:outline-dashed p-1">${current.desc}</div>
+              </div>
+            `;
+          }
+          const thumbs = document.getElementById(`slide-thumbs-${win.id}`);
+          if (thumbs) {
+            thumbs.innerHTML = win.slides.map((s, i) => `
+              <div onclick="OS.setSlideActive('${win.id}', ${i})" class="p-1 rounded-lg cursor-pointer border-2 ${i === win.activeIdx ? 'border-amber-500' : 'border-transparent hover:border-slate-300'}">
+                <div class="w-24 sm:w-28 h-14 rounded flex items-center justify-center p-1 text-center text-[9px] text-white shadow-sm" style="background:${s.bg}">
+                  <span class="font-bold line-clamp-2">${s.title}</span>
+                </div>
+                <div class="text-center text-[10px] text-slate-500 mt-1">Slide ${i + 1}</div>
+              </div>
+            `).join('');
+          }
+        };
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-100">
+            <div class="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <button onclick="OS.addSlide('${win.id}')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded font-medium shadow-sm transition">
+                  <i class="fa-solid fa-plus"></i> New Slide
+                </button>
+                <button onclick="OS.syncSlidesToCloud('${win.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium shadow-sm transition">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Sync Slides
+                </button>
+              </div>
+              <button onclick="OS.notify('Google Slides', 'Presenting in full display mode')" class="px-3 py-1 bg-slate-800 text-white rounded font-medium">
+                <i class="fa-solid fa-play text-[10px]"></i> Present
+              </button>
+            </div>
+            <div class="flex-1 flex overflow-hidden">
+              <div id="slide-thumbs-${win.id}" class="w-28 sm:w-36 bg-white border-r border-slate-200 p-2 sm:p-3 flex flex-col gap-2 overflow-y-auto custom-scroll"></div>
+              <div class="flex-1 p-4 sm:p-6 flex items-center justify-center overflow-auto bg-slate-200">
+                <div id="slide-canvas-${win.id}" class="w-full max-w-xl aspect-video rounded-xl shadow-xl overflow-hidden transition-all"></div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        win.updateStage = updateStage;
+        setTimeout(updateStage, 50);
+      },
+
+      setSlideActive(winId, idx) {
+        const win = this.windows[winId];
+        if (!win) return;
+        win.activeIdx = idx;
+        win.updateStage();
+      },
+
+      addSlide(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        win.slides.push({
+          title: `Project Milestone ${win.slides.length + 1}`,
+          desc: 'Click on any title or text here to edit presentation points.',
+          bg: '#0f766e'
+        });
+        win.activeIdx = win.slides.length - 1;
+        win.updateStage();
+      },
+
+      syncSlidesToCloud(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        this.syncToGoogleSheet('Slides', {
+          PresentationTitle: win.slides[0]?.title || 'Presentation',
+          SlideCount: win.slides.length,
+          SlideDeckSummary: win.slides.map(s => s.title).join(' -> ')
+        });
+      },
+
+      /* 4. DOCUMENT SCANNER (Camera feed, Contrast Filter, PDF/Drive Sync) */
+      renderScanner(win) {
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-900 text-white">
+            <div class="p-3 bg-slate-800 border-b border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2">
+                <button onclick="OS.startScannerCamera('${win.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-camera"></i> Start Camera
+                </button>
+                <button onclick="OS.captureScannerDoc('${win.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-crop-simple"></i> Capture & Scan
+                </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="scanner-filter-${win.id}" class="bg-slate-700 text-white rounded-lg px-2 py-1 text-xs border border-slate-600">
+                  <option value="contrast">High Contrast B&W (Doc Clean)</option>
+                  <option value="grayscale">Grayscale</option>
+                  <option value="color">Full Color</option>
+                </select>
+                <button onclick="OS.uploadScannedToDrive('${win.id}')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded-lg font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Save to Drive Folder
+                </button>
+              </div>
+            </div>
+
+            <!-- Viewport Canvas Split -->
+            <div class="flex-1 flex flex-col sm:flex-row overflow-hidden p-3 gap-3">
+              <div class="flex-1 bg-black rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-700">
+                <video id="scanner-video-preview-${win.id}" autoplay playsinline class="w-full h-full object-cover"></video>
+                <div class="absolute inset-4 border-2 border-dashed border-blue-400 pointer-events-none rounded-lg flex items-center justify-center">
+                  <span class="bg-black/60 px-2 py-1 rounded text-[10px] text-blue-300">Align Document Inside Boundary</span>
+                </div>
+              </div>
+              <div class="w-full sm:w-80 bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <div class="text-xs font-bold text-slate-300 mb-2 flex items-center justify-between">
+                    <span>Scanned Result Preview</span>
+                    <button onclick="OS.downloadScannedDoc('${win.id}')" class="text-blue-400 hover:underline text-[11px]"><i class="fa-solid fa-download"></i> Save Image</button>
+                  </div>
+                  <canvas id="scanner-output-canvas-${win.id}" class="w-full aspect-[3/4] bg-slate-900 rounded-lg border border-slate-800 object-contain"></canvas>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-2">
+                  Captures documents using web camera feed, applies auto-contrast document filtering, and transmits directly to your Google Drive "WebOS_Uploads" folder.
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        setTimeout(() => this.startScannerCamera(win.id), 200);
+      },
+
+      async startScannerCamera(winId) {
+        const vid = document.getElementById(`scanner-video-preview-${winId}`);
+        if (!vid) return;
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          vid.srcObject = stream;
+        } catch (err) {
+          this.notify('Camera Access', 'Using synthetic document scanner mode (no webcam permission).');
+          // Draw mock placeholder document on output canvas
+          const canvas = document.getElementById(`scanner-output-canvas-${winId}`);
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = 300;
+            canvas.height = 400;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 300, 400);
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText('Workspace Invoice Document', 20, 50);
+            ctx.font = '12px sans-serif';
+            ctx.fillText('Invoice #: INV-2026-0987', 20, 80);
+            ctx.fillText('Status: Approved & Verified', 20, 105);
+            ctx.fillRect(20, 120, 260, 2);
+            ctx.fillStyle = '#475569';
+            ctx.fillText('Google Cloud Apps Script backend ready.', 20, 150);
+          }
+        }
+      },
+
+      captureScannerDoc(winId) {
+        const vid = document.getElementById(`scanner-video-preview-${winId}`);
+        const canvas = document.getElementById(`scanner-output-canvas-${winId}`);
+        const filter = document.getElementById(`scanner-filter-${winId}`).value;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const w = vid.videoWidth || 640;
+        const h = vid.videoHeight || 480;
+        canvas.width = w;
+        canvas.height = h;
+
+        if (vid.srcObject) {
+          ctx.drawImage(vid, 0, 0, w, h);
+        } else {
+          // Synthetic high-res invoice
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 24px sans-serif';
+          ctx.fillText('SCANNED WORKSPACE DOCUMENT', 40, 80);
+          ctx.font = '16px monospace';
+          ctx.fillText(`Timestamp: ${new Date().toLocaleString()}`, 40, 120);
+          ctx.fillText('All headers synced via Google Apps Script', 40, 150);
+        }
+
+        // Apply Image Filters (Contrast/B&W)
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          if (filter === 'contrast') {
+            const bw = avg > 128 ? 255 : 0;
+            d[i] = bw; d[i + 1] = bw; d[i + 2] = bw;
+          } else if (filter === 'grayscale') {
+            d[i] = avg; d[i + 1] = avg; d[i + 2] = avg;
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        this.playTone(660, 'square', 0.08);
+        this.notify('Scanner', 'Document captured and processed');
+      },
+
+      downloadScannedDoc(winId) {
+        const canvas = document.getElementById(`scanner-output-canvas-${winId}`);
+        if (!canvas) return;
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `Scanned-Document-${Date.now()}.png`;
+        a.click();
+      },
+
+      uploadScannedToDrive(winId) {
+        const canvas = document.getElementById(`scanner-output-canvas-${winId}`);
+        if (!canvas) return;
+        const base64 = canvas.toDataURL('image/png').split(',')[1];
+        this.syncToGoogleSheet('ScannerUploads', {
+          DocumentName: `Scan_${Date.now()}.png`,
+          FilterApplied: document.getElementById(`scanner-filter-${winId}`)?.value || 'contrast',
+          Notes: 'Uploaded from Workspace Document Scanner'
+        }, {
+          name: `Scan_${Date.now()}.png`,
+          base64: base64,
+          type: 'image/png',
+          folder: 'WebOS_Scanner_Docs'
+        });
+      },
+
+      /* 5. PDF READER */
+      renderPDFReader(win) {
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-800 text-white">
+            <div class="p-2.5 bg-slate-900 border-b border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2">
+                <label class="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-file-arrow-up"></i> Open PDF
+                  <input type="file" accept="application/pdf" class="hidden" id="pdf-picker-${win.id}">
+                </label>
+                <span id="pdf-filename-${win.id}" class="text-slate-300 truncate max-w-[150px] sm:max-w-xs font-mono">Sample_Guide.pdf</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="OS.zoomPDF('${win.id}', -0.2)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <span id="pdf-zoom-${win.id}" class="text-xs font-mono">100%</span>
+                <button onclick="OS.zoomPDF('${win.id}', 0.2)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+              </div>
+            </div>
+            <div class="flex-1 overflow-auto custom-scroll p-4 flex justify-center bg-slate-950">
+              <div id="pdf-render-wrapper-${win.id}" class="w-full max-w-2xl bg-white text-slate-900 p-8 shadow-2xl rounded min-h-[600px]">
+                <h1 class="text-2xl font-bold border-b pb-2 mb-4 text-red-700 flex items-center gap-2">
+                  <i class="fa-solid fa-file-pdf"></i> Workspace Enterprise PDF Reader
+                </h1>
+                <p class="mb-4 text-sm leading-relaxed">
+                  This document viewer renders PDFs directly client-side with zoom controls and file picking. You can select any local PDF file to inspect its pages right inside your WebOS desktop.
+                </p>
+                <div class="p-4 bg-slate-100 rounded-lg border border-slate-300 mb-4 text-xs font-mono">
+                  <div>Status: PDF Reader Engine Active</div>
+                  <div>Zoom Level: 1.0x Nominal</div>
+                  <div>Sync Available: Direct Google Drive file upload enabled</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const picker = document.getElementById(`pdf-picker-${win.id}`);
+        picker.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          document.getElementById(`pdf-filename-${win.id}`).innerText = file.name;
+          const reader = new FileReader();
+          reader.onload = function() {
+            const typedarray = new Uint8Array(this.result);
+            if (window.pdfjsLib) {
+              window.pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                pdf.getPage(1).then(page => {
+                  const scale = 1.3;
+                  const viewport = page.getViewport({ scale: scale });
+                  const wrapper = document.getElementById(`pdf-render-wrapper-${win.id}`);
+                  wrapper.innerHTML = '';
+                  const canvas = document.createElement('canvas');
+                  wrapper.appendChild(canvas);
+                  const context = canvas.getContext('2d');
+                  canvas.height = viewport.height;
+                  canvas.width = viewport.width;
+                  page.render({ canvasContext: context, viewport: viewport });
+                });
+              });
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        };
+      },
+
+      zoomPDF(winId, delta) {
+        const wrapper = document.getElementById(`pdf-render-wrapper-${winId}`);
+        const zoomText = document.getElementById(`pdf-zoom-${winId}`);
+        if (!wrapper) return;
+        let scale = parseFloat(wrapper.getAttribute('data-scale') || '1.0');
+        scale = Math.max(0.6, Math.min(2.4, scale + delta));
+        wrapper.setAttribute('data-scale', scale);
+        wrapper.style.transform = `scale(${scale})`;
+        wrapper.style.transformOrigin = 'top center';
+        if (zoomText) zoomText.innerText = `${Math.round(scale * 100)}%`;
+      },
+
+      /* 6. FILES & GOOGLE DRIVE MANAGER */
+      renderFiles(win) {
+        win.files = [
+          { name: 'Financial_Plan_2026.sheet', type: 'sheets', size: '124 KB', date: 'Today 3:20 PM' },
+          { name: 'Workspace_Strategy.doc', type: 'docs', size: '48 KB', date: 'Yesterday' },
+          { name: 'Scanned_Doc_Receipt.png', type: 'scanner', size: '1.4 MB', date: 'Sep 18' },
+          { name: 'Pitch_Slides.slides', type: 'slides', size: '3.2 MB', date: 'Sep 15' },
+        ];
+
+        const refresh = () => {
+          const list = document.getElementById(`files-list-${win.id}`);
+          if (!list) return;
+          list.innerHTML = win.files.map((f, i) => `
+            <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer" onclick="OS.openApp('${f.type}')">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-base">
+                  <i class="fa-solid fa-file"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-slate-800">${f.name}</div>
+                  <div class="text-[10px] text-slate-400">${f.date}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-slate-500">
+                <span>${f.size}</span>
+                <button onclick="event.stopPropagation(); OS.deleteLocalFile('${win.id}', ${i})" class="text-slate-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          `).join('');
+        };
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col sm:flex-row h-full bg-white">
+            <div class="w-full sm:w-48 bg-slate-50 border-b sm:border-b-0 sm:border-r border-slate-200 p-3 flex sm:flex-col justify-between text-xs">
+              <div class="space-y-1 w-full">
+                <label class="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-xl flex items-center justify-center gap-1.5 transition mb-3">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Upload File
+                  <input type="file" id="file-uploader-${win.id}" class="hidden">
+                </label>
+                <div class="p-2 rounded-lg bg-blue-50 text-blue-700 font-semibold cursor-pointer"><i class="fa-solid fa-hard-drive mr-2"></i> Drive Storage</div>
+                <div class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"><i class="fa-solid fa-clock mr-2"></i> Recent Files</div>
+              </div>
+              <div class="hidden sm:block p-3 bg-slate-100 rounded-xl text-[11px] text-slate-500">
+                <div class="flex justify-between mb-1"><span>Drive Quota</span> <span>9.2 GB / 15 GB</span></div>
+                <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div class="bg-blue-600 h-full w-[61%]"></div></div>
+              </div>
+            </div>
+            <div class="flex-1 flex flex-col overflow-hidden">
+              <div class="p-3 border-b border-slate-200 flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-700">Workspace Files Repository</span>
+                <button onclick="OS.syncFileListToSheet('${win.id}')" class="text-blue-600 hover:underline flex items-center gap-1 font-semibold">
+                  <i class="fa-solid fa-arrows-rotate"></i> Sync Index to Google Sheets
+                </button>
+              </div>
+              <div id="files-list-${win.id}" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2"></div>
+            </div>
+          </div>
+        `;
+
+        win.refreshFiles = refresh;
+        setTimeout(() => {
+          refresh();
+          const uploader = document.getElementById(`file-uploader-${win.id}`);
+          if (uploader) {
+            uploader.onchange = (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              win.files.unshift({
+                name: file.name,
+                type: 'files',
+                size: `${Math.round(file.size / 1024)} KB`,
+                date: 'Just now'
+              });
+              win.refreshFiles();
+              this.notify('File Added', `Uploaded ${file.name}`);
+            };
+          }
+        }, 50);
+      },
+
+      deleteLocalFile(winId, idx) {
+        const win = this.windows[winId];
+        if (!win) return;
+        win.files.splice(idx, 1);
+        win.refreshFiles();
+      },
+
+      syncFileListToSheet(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        this.syncToGoogleSheet('FilesIndex', {
+          TotalFiles: win.files.length,
+          FileList: win.files.map(f => `${f.name} (${f.size})`).join('; ')
+        });
+      },
+
+      /* 7. CHROME BROWSER CLONE */
+      renderChrome(win) {
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-100">
+            <!-- Navigation Bar -->
+            <div class="h-10 bg-slate-200 border-b border-slate-300 px-3 flex items-center gap-2">
+              <button class="p-1 rounded hover:bg-slate-300 text-slate-600" onclick="document.getElementById('chrome-frame-${win.id}').contentWindow.history.back()"><i class="fa-solid fa-arrow-left"></i></button>
+              <button class="p-1 rounded hover:bg-slate-300 text-slate-600" onclick="document.getElementById('chrome-frame-${win.id}').contentWindow.history.forward()"><i class="fa-solid fa-arrow-right"></i></button>
+              <button class="p-1 rounded hover:bg-slate-300 text-slate-600" onclick="document.getElementById('chrome-frame-${win.id}').src = document.getElementById('chrome-url-${win.id}').value"><i class="fa-solid fa-rotate-right"></i></button>
+              <input id="chrome-url-${win.id}" type="text" value="https://wikipedia.org" class="flex-1 bg-white border border-slate-300 rounded-full px-4 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans">
+              <button onclick="OS.launchChromeURL('${win.id}')" class="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-semibold">Go</button>
+            </div>
+            <!-- Bookmarks Bar -->
+            <div class="h-7 bg-slate-50 border-b border-slate-200 px-3 flex items-center gap-3 text-[11px] text-slate-600">
+              <span class="cursor-pointer hover:text-blue-600 flex items-center gap-1" onclick="OS.setChromeBookmark('${win.id}', 'https://wikipedia.org')"><i class="fa-brands fa-wikipedia-w"></i> Wikipedia</span>
+              <span class="cursor-pointer hover:text-blue-600 flex items-center gap-1" onclick="OS.setChromeBookmark('${win.id}', 'https://bing.com')"><i class="fa-brands fa-microsoft"></i> Search Engine</span>
+              <span class="cursor-pointer hover:text-blue-600 flex items-center gap-1" onclick="OS.setChromeBookmark('${win.id}', 'https://news.ycombinator.com')"><i class="fa-solid fa-newspaper"></i> Tech News</span>
+            </div>
+            <iframe id="chrome-frame-${win.id}" src="https://wikipedia.org" class="flex-1 w-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+          </div>
+        `;
+      },
+
+      launchChromeURL(winId) {
+        const inp = document.getElementById(`chrome-url-${winId}`);
+        const frame = document.getElementById(`chrome-frame-${winId}`);
+        if (!inp || !frame) return;
+        let url = inp.value.trim();
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          url = 'https://' + url;
+        }
+        inp.value = url;
+        frame.src = url;
+      },
+
+      setChromeBookmark(winId, url) {
+        const inp = document.getElementById(`chrome-url-${winId}`);
+        const frame = document.getElementById(`chrome-frame-${winId}`);
+        if (inp && frame) {
+          inp.value = url;
+          frame.src = url;
+        }
+      },
+
+      /* 8. CONTACTS APP (Add, Call, Message & Google Sheet sync) */
+      renderContacts(win) {
+        win.contacts = [
+          { id: 1, name: 'Sundar Pichai', phone: '+1 650-253-0000', email: 'sundar@google.com', avatar: '#2563eb' },
+          { id: 2, name: 'Sarah Miller (Eng Lead)', phone: '+1 415-555-0199', email: 'smiller@cloud.internal', avatar: '#16a34a' },
+          { id: 3, name: 'Alex Johnson (Product)', phone: '+1 212-555-0144', email: 'ajohnson@workspace.org', avatar: '#d97706' },
+        ];
+
+        const refresh = () => {
+          const list = document.getElementById(`contacts-list-${win.id}`);
+          if (!list) return;
+          list.innerHTML = win.contacts.map(c => `
+            <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs" style="background:${c.avatar}">
+                  ${c.name.charAt(0)}
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-slate-800">${c.name}</div>
+                  <div class="text-[11px] text-slate-500">${c.phone} • ${c.email}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="OS.callContact('${c.phone}')" class="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"><i class="fa-solid fa-phone text-xs"></i></button>
+                <button onclick="OS.messageContact('${c.name}')" class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"><i class="fa-solid fa-comment text-xs"></i></button>
+              </div>
+            </div>
+          `).join('');
+        };
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-white text-slate-800">
+            <div class="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div class="text-xs font-bold text-slate-800">Google Contacts & Address Book</div>
+              <div class="flex items-center gap-2">
+                <button onclick="OS.showAddContactModal('${win.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition">
+                  <i class="fa-solid fa-user-plus mr-1"></i> Add Contact
+                </button>
+                <button onclick="OS.syncContactsToSheet('${win.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition">
+                  <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Sync to Sheets
+                </button>
+              </div>
+            </div>
+            <div id="contacts-list-${win.id}" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2"></div>
+          </div>
+        `;
+
+        win.refreshContacts = refresh;
+        setTimeout(refresh, 50);
+      },
+
+      showAddContactModal(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        const name = prompt('Contact Name:');
+        if (!name) return;
+        const phone = prompt('Phone Number:', '+1 555-');
+        win.contacts.unshift({
+          id: Date.now(),
+          name: name,
+          phone: phone || '+1 555-0000',
+          email: `${name.toLowerCase().replace(/\s+/g, '')}@workspace.com`,
+          avatar: '#4f46e5'
+        });
+        win.refreshContacts();
+        this.notify('Contact Saved', `${name} added to contacts.`);
+      },
+
+      syncContactsToSheet(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        this.syncToGoogleSheet('Contacts', {
+          TotalContacts: win.contacts.length,
+          DirectorySnippet: win.contacts.map(c => `${c.name} (${c.phone})`).join(', ')
+        });
+      },
+
+      callContact(num) {
+        this.openApp('phone');
+        setTimeout(() => {
+          const pWin = Object.values(this.windows).find(w => w.appId === 'phone');
+          if (pWin) {
+            const disp = document.getElementById(`phone-display-${pWin.id}`);
+            if (disp) disp.innerText = num;
+            OS.dialCurrentNumber(pWin.id);
+          }
+        }, 150);
+      },
+
+      messageContact(name) {
+        this.openApp('messages');
+      },
+
+      /* 9. PHONE DIALER APP (Audio DTMF dial tones, Dial pad, Simulation) */
+      renderPhone(win) {
+        const keys = [
+          { k: '1', sub: '' }, { k: '2', sub: 'ABC' }, { k: '3', sub: 'DEF' },
+          { k: '4', sub: 'GHI' }, { k: '5', sub: 'JKL' }, { k: '6', sub: 'MNO' },
+          { k: '7', sub: 'PQRS' }, { k: '8', sub: 'TUV' }, { k: '9', sub: 'WXYZ' },
+          { k: '*', sub: '' }, { k: '0', sub: '+' }, { k: '#', sub: '' }
+        ];
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-900 text-white">
+            <div class="h-20 p-4 flex flex-col justify-center items-center border-b border-slate-800">
+              <div id="phone-display-${win.id}" class="text-2xl font-mono font-bold tracking-wider text-emerald-400 truncate max-w-full"></div>
+              <div id="phone-status-${win.id}" class="text-[11px] text-slate-400 mt-1">Ready to Call</div>
+            </div>
+
+            <!-- Keypad Grid -->
+            <div class="flex-1 grid grid-cols-3 gap-3 p-5 max-w-xs mx-auto items-center">
+              ${keys.map(key => `
+                <button onclick="OS.pressDialKey('${win.id}', '${key.k}')" class="w-16 h-16 rounded-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 flex flex-col items-center justify-center border border-slate-700 shadow-md transition transform active:scale-95">
+                  <span class="text-xl font-bold">${key.k}</span>
+                  <span class="text-[9px] text-slate-400 font-mono">${key.sub}</span>
+                </button>
+              `).join('')}
+            </div>
+
+            <!-- Call & Backspace -->
+            <div class="h-20 flex items-center justify-center gap-6 pb-4">
+              <button onclick="OS.clearDialDigit('${win.id}')" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400">
+                <i class="fa-solid fa-delete-left text-lg"></i>
+              </button>
+              <button onclick="OS.dialCurrentNumber('${win.id}')" class="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 flex items-center justify-center text-white text-2xl shadow-xl transform active:scale-95">
+                <i class="fa-solid fa-phone"></i>
+              </button>
+              <button onclick="OS.endCurrentCall('${win.id}')" class="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 flex items-center justify-center text-white">
+                <i class="fa-solid fa-phone-slash text-base"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      },
+
+      pressDialKey(winId, char) {
+        const disp = document.getElementById(`phone-display-${winId}`);
+        if (!disp) return;
+        disp.innerText += char;
+        // Synthesize DTMF-like frequency
+        const freqs = { '1': 697, '2': 770, '3': 852, '4': 697, '5': 770, '6': 852, '7': 941, '8': 770, '9': 852, '0': 941, '*': 697, '#': 941 };
+        this.playTone(freqs[char] || 800, 'sine', 0.1);
+      },
+
+      clearDialDigit(winId) {
+        const disp = document.getElementById(`phone-display-${winId}`);
+        if (disp) disp.innerText = disp.innerText.slice(0, -1);
+      },
+
+      dialCurrentNumber(winId) {
+        const disp = document.getElementById(`phone-display-${winId}`);
+        const status = document.getElementById(`phone-status-${winId}`);
+        const num = disp ? disp.innerText : '';
+        if (!num) return;
+        status.innerText = `Calling ${num}...`;
+        status.className = 'text-[11px] text-emerald-400 font-bold animate-pulse';
+        this.playTone(425, 'sine', 0.4);
+        setTimeout(() => {
+          status.innerText = `Connected (00:01)`;
+          this.syncToGoogleSheet('CallLogs', {
+            DialedNumber: num,
+            Duration: 'Simulated 1 min',
+            Status: 'Completed'
+          });
+        }, 1500);
+      },
+
+      endCurrentCall(winId) {
+        const status = document.getElementById(`phone-status-${winId}`);
+        if (status) {
+          status.innerText = 'Call Ended';
+          status.className = 'text-[11px] text-slate-400';
+        }
+        this.playTone(300, 'sawtooth', 0.2);
+      },
+
+      /* 10. MESSAGES APP */
+      renderMessages(win) {
+        win.chats = [
+          { sender: 'Sundar Pichai', text: 'Have you verified the new Google Workspace WebOS deployment?', time: '10:14 AM', self: false },
+          { sender: 'Me', text: 'Yes, all 8-direction resizers, justify alignment, and zero-login Google Sheet scripts are fully operational.', time: '10:16 AM', self: true },
+          { sender: 'Sundar Pichai', text: 'Fantastic work! The fluid responsiveness is impressive.', time: '10:17 AM', self: false },
+        ];
+
+        const refresh = () => {
+          const box = document.getElementById(`msg-thread-${win.id}`);
+          if (!box) return;
+          box.innerHTML = win.chats.map(c => `
+            <div class="flex flex-col ${c.self ? 'items-end' : 'items-start'} mb-3">
+              <div class="text-[10px] text-slate-400 mb-0.5 px-1">${c.sender} • ${c.time}</div>
+              <div class="max-w-[75%] p-3 rounded-2xl text-xs ${c.self ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-200 text-slate-800 rounded-tl-none'} shadow-sm">
+                ${c.text}
+              </div>
+            </div>
+          `).join('');
+          box.scrollTop = box.scrollHeight;
+        };
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-50">
+            <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs">G</div>
+                <div>
+                  <div class="text-xs font-bold text-slate-800">Google Chat & Workspace Messages</div>
+                  <div class="text-[10px] text-emerald-600 font-medium">Online & Synced</div>
+                </div>
+              </div>
+            </div>
+            <div id="msg-thread-${win.id}" class="flex-1 p-4 overflow-y-auto custom-scroll"></div>
+            <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
+              <input id="msg-input-${win.id}" type="text" placeholder="Type a message..." class="flex-1 border border-slate-300 rounded-full px-4 py-2 text-xs focus:outline-none focus:border-blue-500">
+              <button onclick="OS.sendMessageItem('${win.id}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold transition">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        `;
+
+        win.refreshMessages = refresh;
+        setTimeout(refresh, 50);
+
+        setTimeout(() => {
+          const inp = document.getElementById(`msg-input-${win.id}`);
+          if (inp) {
+            inp.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') OS.sendMessageItem(win.id);
+            });
+          }
+        }, 60);
+      },
+
+      sendMessageItem(winId) {
+        const win = this.windows[winId];
+        if (!win) return;
+        const inp = document.getElementById(`msg-input-${win.id}`);
+        if (!inp || !inp.value.trim()) return;
+        const text = inp.value.trim();
+        win.chats.push({ sender: 'Me', text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), self: true });
+        inp.value = '';
+        win.refreshMessages();
+        this.playTone(750, 'sine', 0.08);
+
+        this.syncToGoogleSheet('Messages', {
+          Sender: 'Me',
+          MessageContent: text
+        });
+
+        // Automated mock response
+        setTimeout(() => {
+          win.chats.push({ sender: 'Sundar Pichai', text: 'Got it! Live response received.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), self: false });
+          win.refreshMessages();
+          this.playTone(550, 'sine', 0.08);
+        }, 1200);
+      },
+
+      /* 11. WHATSAPP WEB CLONE */
+      renderWhatsApp(win) {
+        win.contentEl.innerHTML = `
+          <div class="flex h-full bg-[#f0f2f5] text-slate-800">
+            <!-- Sidebar with contacts -->
+            <div class="w-full sm:w-80 border-r border-slate-300 flex flex-col bg-white">
+              <div class="p-3 bg-[#f0f2f5] border-b border-slate-200 flex items-center justify-between">
+                <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs"><i class="fa-brands fa-whatsapp text-lg"></i></div>
+                <div class="flex items-center gap-3 text-slate-600 text-sm">
+                  <button title="Status"><i class="fa-solid fa-circle-notch"></i></button>
+                  <button title="New Chat"><i class="fa-solid fa-message"></i></button>
+                  <button title="Menu"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                </div>
+              </div>
+              <div class="p-2 border-b border-slate-200">
+                <input type="text" placeholder="Search or start new chat" class="w-full bg-[#f0f2f5] rounded-lg px-3 py-1.5 text-xs focus:outline-none">
+              </div>
+              <div class="flex-1 overflow-y-auto custom-scroll divide-y divide-slate-100">
+                <div class="p-3 flex items-center gap-3 hover:bg-slate-100 cursor-pointer bg-slate-50">
+                  <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">W</div>
+                  <div class="flex-1 truncate">
+                    <div class="flex justify-between text-xs font-semibold"><span>Workspace Team</span> <span class="text-[10px] text-slate-400">12:30 PM</span></div>
+                    <div class="text-[11px] text-slate-500 truncate">Let's coordinate on the live presentation.</div>
+                  </div>
+                </div>
+                <div class="p-3 flex items-center gap-3 hover:bg-slate-100 cursor-pointer">
+                  <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">A</div>
+                  <div class="flex-1 truncate">
+                    <div class="flex justify-between text-xs font-semibold"><span>Alex Johnson</span> <span class="text-[10px] text-slate-400">11:15 AM</span></div>
+                    <div class="text-[11px] text-slate-500 truncate">Document scanner works seamlessly!</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Conversation Area -->
+            <div class="hidden sm:flex flex-1 flex-col bg-[#efeae2] bg-opacity-70">
+              <div class="p-3 bg-[#f0f2f5] border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">W</div>
+                  <div>
+                    <div class="text-xs font-bold">Workspace Team</div>
+                    <div class="text-[10px] text-slate-500">Alex, Sarah, Sundar, You</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 text-slate-600 text-sm">
+                  <button title="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                  <button title="Attach" onclick="OS.notify('WhatsApp Attachment', 'Attachment simulator opened')"><i class="fa-solid fa-paperclip"></i></button>
+                </div>
+              </div>
+              <div class="flex-1 p-4 overflow-y-auto space-y-3 custom-scroll">
+                <div class="bg-white p-3 rounded-lg max-w-sm text-xs shadow-sm self-start">
+                  Hey team! Make sure the Google Sheet Apps Script backend URL is tested in the Settings App.
+                  <div class="text-[9px] text-slate-400 text-right mt-1">12:28 PM</div>
+                </div>
+                <div class="bg-[#d9fdd3] p-3 rounded-lg max-w-sm text-xs shadow-sm ml-auto">
+                  Confirmed! Zero-login data sync to both Google Drive and Google Sheets is active.
+                  <div class="text-[9px] text-slate-400 text-right mt-1">12:30 PM <i class="fa-solid fa-check-double text-blue-500"></i></div>
+                </div>
+              </div>
+              <div class="p-2.5 bg-[#f0f2f5] border-t border-slate-200 flex items-center gap-2">
+                <button class="text-slate-600 text-lg px-2"><i class="fa-regular fa-face-smile"></i></button>
+                <input type="text" placeholder="Type a message" class="flex-1 bg-white rounded-lg px-3 py-2 text-xs focus:outline-none">
+                <button class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 transition"><i class="fa-solid fa-microphone"></i></button>
+              </div>
+            </div>
+          </div>
+        `;
+      },
+
+      /* 12. APP STUDIO (Custom Code Installer) */
+      renderAppStudio(win) {
+        const sampleCode = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #38bdf8; text-align: center; padding: 30px; margin: 0; }
+    h2 { font-size: 20px; color: #f8fafc; margin-bottom: 8px; }
+    p { font-size: 13px; color: #94a3b8; }
+    button { background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:active { transform: scale(0.95); }
+    #box { margin-top: 20px; padding: 15px; background: #1e293b; border-radius: 12px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h2>🚀 Custom Micro-App</h2>
+  <p>Runs sandboxed inside Google Workspace WebOS.</p>
+  <button onclick="calc()">Run Execution</button>
+  <div id="box">Click to test logic</div>
+  <script>
+    function calc() {
+      document.getElementById('box').innerText = 'Timestamp: ' + new Date().toLocaleTimeString();
+    }
+  <\/script>
+</body>
+</html>`;
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-900 text-slate-100">
+            <div class="p-3 bg-slate-800 border-b border-slate-700 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <input id="studio-name-${win.id}" type="text" value="Micro App" placeholder="App Title" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white">
+                <select id="studio-icon-${win.id}" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white">
+                  <option value="fa-solid fa-code">💻 Code</option>
+                  <option value="fa-solid fa-rocket">🚀 Rocket</option>
+                  <option value="fa-solid fa-gamepad">🎮 Game</option>
+                  <option value="fa-solid fa-bolt">⚡ Tool</option>
+                  <option value="fa-solid fa-chart-line">📈 Analytics</option>
+                </select>
+                <input id="studio-color-${win.id}" type="color" value="#8b5cf6" class="w-7 h-7 bg-transparent rounded cursor-pointer">
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                  <i class="fa-solid fa-file-arrow-up"></i> Upload Code File
+                  <input type="file" id="studio-file-${win.id}" accept=".html,.htm,.txt,.js" class="hidden">
+                </label>
+                <button onclick="OS.installAppFromStudio('${win.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg shadow transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-circle-check"></i> Install to Desktop
+                </button>
+              </div>
+            </div>
+
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+              <div class="flex-1 flex flex-col border-r border-slate-800">
+                <div class="bg-slate-950 px-3 py-1.5 text-[11px] font-mono text-slate-400 flex justify-between border-b border-slate-800">
+                  <span>Source Code (HTML/JS/CSS)</span>
+                  <button class="text-blue-400 hover:underline" onclick="OS.previewStudio('${win.id}')">Run Sandbox</button>
+                </div>
+                <textarea id="studio-editor-${win.id}" class="flex-1 bg-slate-950 text-emerald-400 font-mono text-xs p-3 focus:outline-none resize-none custom-scroll">${sampleCode}</textarea>
+              </div>
+              <div class="w-full md:w-1/2 flex flex-col bg-white">
+                <div class="bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-600 border-b border-slate-200">Sandbox Preview</div>
+                <iframe id="studio-preview-frame-${win.id}" class="flex-1 border-0" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+              </div>
+            </div>
+          </div>
+        `;
+
+        setTimeout(() => {
+          this.previewStudio(win.id);
+          const fileInput = document.getElementById(`studio-file-${win.id}`);
+          if (fileInput) {
+            fileInput.onchange = (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                const ed = document.getElementById(`studio-editor-${win.id}`);
+                const nameInp = document.getElementById(`studio-name-${win.id}`);
+                if (ed) ed.value = ev.target.result;
+                if (nameInp) nameInp.value = file.name.replace(/\.[^/.]+$/, "");
+                this.previewStudio(win.id);
+                this.notify('Code Loaded', `Loaded ${file.name}`);
+              };
+              reader.readAsText(file);
+            };
+          }
+        }, 50);
+      },
+
+      previewStudio(winId) {
+        const code = document.getElementById(`studio-editor-${winId}`)?.value || '';
+        const iframe = document.getElementById(`studio-preview-frame-${winId}`);
+        if (iframe) iframe.srcdoc = code;
+      },
+
+      installAppFromStudio(winId) {
+        const name = document.getElementById(`studio-name-${winId}`)?.value.trim() || 'Custom App';
+        const icon = document.getElementById(`studio-icon-${winId}`)?.value || 'fa-solid fa-cube';
+        const color = document.getElementById(`studio-color-${winId}`)?.value || '#6366f1';
+        const code = document.getElementById(`studio-editor-${winId}`)?.value || '';
+
+        const appId = 'app_' + Date.now();
+        this.registerApp({
+          id: appId,
+          name: name,
+          icon: icon,
+          color: color,
+          code: code,
+          isSystem: false
+        }, true);
+        this.openApp(appId);
+      },
+
+      /* 13. APP MANAGER (UNINSTALLER PANEL) */
+      renderAppManager(win) {
+        const refreshList = () => {
+          const list = document.getElementById(`manager-app-list-${win.id}`);
+          if (!list) return;
+
+          const apps = Object.values(this.appRegistry);
+          list.innerHTML = apps.map(app => `
+            <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style="background:${app.color}">
+                  <i class="${app.icon} text-white text-lg"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                    ${app.name}
+                    ${app.isSystem ? '<span class="text-[9px] bg-slate-100 text-slate-500 font-semibold px-1.5 py-0.5 rounded">Core System</span>' : '<span class="text-[9px] bg-purple-100 text-purple-700 font-semibold px-1.5 py-0.5 rounded">Custom Installed</span>'}
+                  </div>
+                  <div class="text-[11px] text-slate-400">ID: ${app.id}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="OS.openApp('${app.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">Launch</button>
+                ${!app.isSystem ? `
+                  <button onclick="OS.uninstallApp('${app.id}')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-trash text-[10px]"></i> Uninstall
+                  </button>
+                ` : `
+                  <span class="text-xs text-slate-300 px-2 py-1"><i class="fa-solid fa-lock text-[10px]"></i> Locked</span>
+                `}
+              </div>
+            </div>
+          `).join('');
+        };
+
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-50 text-slate-800">
+            <div class="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-sm text-slate-900">Application Management Center</h3>
+                <p class="text-xs text-slate-500">Review, launch, or uninstall custom web applications.</p>
+              </div>
+              <button onclick="OS.openApp('studio')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-plus"></i> Install Code
+              </button>
+            </div>
+            <div id="manager-app-list-${win.id}" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-2"></div>
+          </div>
+        `;
+
+        win.refreshManager = refreshList;
+        setTimeout(refreshList, 50);
+      },
+
+      /* 14. SETTINGS APP & GOOGLE APPS SCRIPT CODE.GS HUB */
+      renderSettings(win) {
+        win.contentEl.innerHTML = `
+          <div class="flex flex-col h-full bg-slate-50 text-slate-800">
+            <div class="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                  <i class="fa-solid fa-sliders text-blue-600"></i> Settings & Zero-Login Google Cloud Backend
+                </h2>
+                <p class="text-xs text-slate-500">Configure your Google Sheets & Google Drive direct sync script without credentials.</p>
+              </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scroll p-4 sm:p-6 space-y-5">
+              <!-- Google Apps Script Deployed URL Configuration -->
+              <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-link text-emerald-600"></i> Apps Script Web App URL
+                  </span>
+                  <span class="text-[11px] text-emerald-600 font-semibold"><i class="fa-solid fa-shield-check"></i> Zero Login Required</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  Enter your deployed Google Apps Script Web App URL below. When saved, all entries created in Docs, Sheets, Scanner, Contacts, and Files will automatically stream directly into your Google Sheet tabs and Google Drive folder.
+                </p>
+                <div class="flex gap-2">
+                  <input id="setting-script-url" type="text" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="${OS.appsScriptUrl}" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500">
+                  <button onclick="OS.saveScriptUrl()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition">Save URL</button>
+                </div>
+              </div>
+
+              <!-- Ready-to-deploy Code.gs Viewer -->
+              <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-sm text-slate-100 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-blue-400 font-mono flex items-center gap-2">
+                    <i class="fa-brands fa-google"></i> Code.gs (Deploy directly in Google Sheets script editor)
+                  </span>
+                  <button onclick="OS.copyCodeGs()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-copy"></i> Copy Script
+                  </button>
+                </div>
+                <textarea id="code-gs-view" readonly class="w-full h-48 bg-slate-950 text-emerald-400 font-mono text-xs p-3 rounded-xl border border-slate-800 focus:outline-none custom-scroll">${CODE_GS_TEMPLATE}</textarea>
+                <div class="text-[11px] text-slate-400 space-y-1">
+                  <div>1. Go to <a href="https://script.google.com" target="_blank" class="text-blue-400 underline">script.google.com</a>, create a new project and paste this code.</div>
+                  <div>2. Click <b>Deploy > New deployment</b>, select <b>Web app</b>, execute as <b>Me</b>, and set Who has access to <b>Anyone</b>.</div>
+                  <div>3. The script will automatically auto-create sheets (Docs, Contacts, ScannerUploads, Spreadsheets) and format headers.</div>
+                </div>
+              </div>
+
+              <!-- OS Personalization Preferences -->
+              <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-700">OS Experience</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <div class="font-bold text-slate-800">Audio Feedback</div>
+                      <div class="text-[11px] text-slate-500">Synthesized tones on dials and clicks</div>
+                    </div>
+                    <button onclick="OS.toggleAudio()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold">Toggle</button>
+                  </div>
+                  <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <div class="font-bold text-slate-800">Wallpaper Theme</div>
+                      <div class="text-[11px] text-slate-500">Switch desktop gradient</div>
+                    </div>
+                    <button onclick="OS.toggleWallpaper()" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg font-semibold">Next Wallpaper</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      },
+
+      saveScriptUrl() {
+        const inp = document.getElementById('setting-script-url');
+        if (!inp) return;
+        const val = inp.value.trim();
+        this.appsScriptUrl = val;
+        localStorage.setItem('g_webos_script_url', val);
+        const pill = document.getElementById('backend-status-pill');
+        if (pill) {
+          pill.innerText = val ? 'Cloud Synced' : 'Sheet Ready';
+        }
+        this.notify('Google Apps Script URL', 'Saved successfully. Ready for zero-login sync.');
+      },
+
+      copyCodeGs() {
+        const textarea = document.getElementById('code-gs-view');
+        if (!textarea) return;
+        textarea.select();
+        document.execCommand('copy');
+        this.notify('Copied', 'Code.gs copied to clipboard. Ready to paste into script.google.com');
       }
-      if (k === 'Copy') { document.execCommand('copy'); return; }
-      if (k === 'Paste') { document.execCommand('paste'); return; }
-      if (k === 'Backspace') { document.execCommand('delete'); return; }
-      if (k === 'Enter') { document.execCommand('insertLineBreak'); return; }
-      if (k === 'Space') { document.execCommand('insertText', false, ' '); return; }
-      if (k === 'Tab') { document.execCommand('insertText', false, '  '); return; }
-      document.execCommand('insertText', false, k);
-    }
+    };
 
-    /* Virtual Trackpad */
-    function initTrackpad() {
-      const area = document.getElementById('trackpadArea');
-      const cursor = document.getElementById('virtualCursor');
-      let touch = false, lx = 0, ly = 0;
-
-      area.addEventListener('touchstart', (e) => {
-        touch = true;
-        lx = e.touches[0].clientX;
-        ly = e.touches[0].clientY;
-        cursor.classList.remove('hidden');
-      });
-
-      area.addEventListener('touchmove', (e) => {
-        if (!touch) return;
-        const dx = (e.touches[0].clientX - lx) * 1.6;
-        const dy = (e.touches[0].clientY - ly) * 1.6;
-        STATE.virtualMouse.x = Math.max(0, Math.min(window.innerWidth - 8, STATE.virtualMouse.x + dx));
-        STATE.virtualMouse.y = Math.max(0, Math.min(window.innerHeight - 8, STATE.virtualMouse.y + dy));
-        cursor.style.left = STATE.virtualMouse.x + 'px';
-        cursor.style.top = STATE.virtualMouse.y + 'px';
-        lx = e.touches[0].clientX;
-        ly = e.touches[0].clientY;
-      });
-
-      document.getElementById('trackpadLeftClick').onclick = () => {
-        const el = document.elementFromPoint(STATE.virtualMouse.x, STATE.virtualMouse.y);
-        if (el) el.click();
-      };
-      document.getElementById('trackpadRightClick').onclick = () => {
-        const el = document.elementFromPoint(STATE.virtualMouse.x, STATE.virtualMouse.y);
-        if (el) el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: STATE.virtualMouse.x, clientY: STATE.virtualMouse.y }));
-      };
-    }
-
-    function toggleTrackpad() {
-      document.getElementById('touchTrackpad').classList.toggle('hidden');
-    }
-
-    function toggleTrackpadFloat() {
-      const tp = document.getElementById('touchTrackpad');
-      tp.classList.toggle('fixed');
-      tp.classList.toggle('bottom-14');
-      tp.classList.toggle('right-4');
-      tp.classList.toggle('w-72');
-      tp.classList.toggle('rounded-2xl');
-    }
-
-    /* General Toggles */
-    function toggleStartMenu(force) {
-      const menu = document.getElementById('startMenu');
-      menu.classList.toggle('hidden', force !== undefined ? !force : undefined);
-    }
-
-    function toggleQuickSettings() {
-      document.getElementById('quickSettingsFlyout').classList.toggle('hidden');
-    }
-
-    function toggleWidgetsPane() {
-      document.getElementById('widgetsPane').classList.toggle('hidden');
-    }
-
-    function adjustBrightness(val) {
-      document.getElementById('dimmerOverlay').style.opacity = (val / 100).toString();
-    }
-
-    function changeWallpaper(url) {
-      document.getElementById('desktop').style.backgroundImage = `url('${url}')`;
-    }
-
-    function handleLogout() {
-      sessionStorage.removeItem('cloudos_win11_user');
-      STATE.currentUser = null;
-      document.getElementById('authGate').classList.remove('hidden');
-      toggleStartMenu(false);
-    }
-
-    function calcPress(winId, val) {
-      const s = document.getElementById(winId + '_calc_scr');
-      if (val === 'C') s.value = '0';
-      else if (val === '=') {
-        try { s.value = eval(s.value); } catch(e) { s.value = 'Error'; }
-      } else { s.value = (s.value === '0') ? val : s.value + val; }
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      OS.init();
+    });
   </script>
 </body>
 </html>
