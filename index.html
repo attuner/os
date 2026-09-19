@@ -1,0 +1,3176 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CloudOS — Web Cloud Desktop</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f172a">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Identity Services & GAPI Client -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['Fira Code', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom UI Scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+
+    /* Glassmorphism Styles */
+    .acrylic {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .acrylic-light {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .acrylic-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+    }
+
+    /* Window Resize Handles */
+    .resize-handle { position: absolute; z-index: 50; touch-action: none; }
+    .resize-right { top: 0; right: -6px; width: 14px; height: 100%; cursor: ew-resize; }
+    .resize-bottom { bottom: -6px; left: 0; width: 100%; height: 14px; cursor: ns-resize; }
+    .resize-corner { bottom: -6px; right: -6px; width: 22px; height: 22px; cursor: nwse-resize; }
+
+    /* Touch & Mobile Responsive Optimizations */
+    @media (max-width: 768px) {
+      .mobile-fullscreen {
+        width: 100vw !important;
+        height: calc(100vh - 48px) !important;
+        left: 0 !important;
+        top: 0 !important;
+        border-radius: 0 !important;
+      }
+      .mobile-hide { display: none !important; }
+    }
+
+    /* Virtual Keyboard key press */
+    .vkey {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .vkey:active {
+      transform: scale(0.95);
+      background-color: rgba(99, 102, 241, 0.6) !important;
+    }
+  </style>
+</head>
+
+<body class="h-full w-full overflow-hidden bg-slate-950 text-slate-100 font-sans relative antialiased selection:bg-indigo-500 selection:text-white touch-none">
+
+  <!-- Desktop Wallpaper Canvas -->
+  <div id="desktop-wallpaper" class="absolute inset-0 bg-cover bg-center transition-all duration-700 -z-10 brightness-[0.88]"
+       style="background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop');">
+  </div>
+
+  <!-- Screen Brightness Dimmer Overlay -->
+  <div id="screen-dimmer-overlay" class="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300 z-[9990] opacity-0"></div>
+
+  <!-- AUTHENTICATION & LOGIN / REGISTRATION MODAL GATEWAY -->
+  <div id="auth-gate-modal" class="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 backdrop-blur-xl p-4">
+    <div class="acrylic rounded-3xl p-6 sm:p-8 max-w-md w-full border border-white/20 shadow-2xl relative overflow-hidden">
+      <!-- Glow background blob -->
+      <div class="absolute -top-16 -right-16 w-36 h-36 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Header -->
+      <div class="text-center mb-6">
+        <div class="inline-flex p-3 rounded-2xl bg-indigo-600/30 border border-indigo-500/30 mb-2 shadow-inner">
+          <i data-lucide="cloud" class="w-8 h-8 text-indigo-400"></i>
+        </div>
+        <h2 class="text-xl font-bold text-white tracking-wide">CloudOS Web Desktop</h2>
+        <p class="text-xs text-slate-400 mt-1">Google Sheet & Drive Cloud Architecture</p>
+      </div>
+
+      <!-- Auth Navigation Tabs -->
+      <div class="flex rounded-xl bg-black/40 p-1 mb-5 border border-white/10 text-xs">
+        <button id="auth-tab-login" onclick="AuthEngine.setTab('login')" class="flex-1 py-2 rounded-lg font-medium text-white bg-indigo-600 shadow transition">Sign In</button>
+        <button id="auth-tab-register" onclick="AuthEngine.setTab('register')" class="flex-1 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition">Sign Up</button>
+        <button id="auth-tab-forgot" onclick="AuthEngine.setTab('forgot')" class="flex-1 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition">Forgot</button>
+      </div>
+
+      <!-- Form: Login -->
+      <form id="form-login" onsubmit="AuthEngine.submitLogin(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Username or Email</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="login-username" required class="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="admin or you@domain.com">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Password</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="password" id="login-password" required class="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="••••••••">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 mt-2 bg-indigo-600 hover:bg-indigo-500 active:scale-98 rounded-xl text-xs font-semibold text-white shadow-lg transition flex items-center justify-center space-x-2">
+          <span>Sign In to CloudOS</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Form: Registration -->
+      <form id="form-register" onsubmit="AuthEngine.submitRegister(event)" class="space-y-3 hidden">
+        <div>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Email Address (For recovery)</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="email" id="reg-email" required class="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="user@gmail.com">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Desired Username</label>
+          <div class="relative">
+            <i data-lucide="at-sign" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="reg-username" required class="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="clouduser">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Password</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="password" id="reg-password" required minlength="4" class="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="••••••••">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 mt-2 bg-emerald-600 hover:bg-emerald-500 active:scale-98 rounded-xl text-xs font-semibold text-white shadow-lg transition flex items-center justify-center space-x-2">
+          <span>Create Cloud Account</span>
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Form: Forgot Password -->
+      <form id="form-forgot" onsubmit="AuthEngine.submitForgot(event)" class="space-y-3.5 hidden">
+        <p class="text-xs text-slate-400 leading-relaxed">Enter your registered email address. The Google Sheet Apps Script backend will send your password to your inbox via Google MailApp.</p>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">Registered Email</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="email" id="forgot-email" required class="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="your@email.com">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 mt-2 bg-amber-600 hover:bg-amber-500 active:scale-98 rounded-xl text-xs font-semibold text-white shadow-lg transition flex items-center justify-center space-x-2">
+          <span>Send Recovery Email</span>
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Apps Script Configuration Link Button -->
+      <div class="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+        <button type="button" onclick="AuthEngine.openScriptConfigModal()" class="text-indigo-400 hover:underline flex items-center space-x-1">
+          <i data-lucide="code-2" class="w-3.5 h-3.5"></i>
+          <span>Google Apps Script Backend Setup</span>
+        </button>
+        <button type="button" onclick="AuthEngine.bypassLoginDemo()" class="text-slate-400 hover:text-white underline">
+          Guest RAM Demo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRST-TIME GOOGLE DRIVE ONBOARDING WIZARD MODAL -->
+  <div id="drive-onboarding-modal" class="fixed inset-0 z-[99998] hidden flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="acrylic rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-indigo-500/30 shadow-2xl text-xs">
+      <div class="flex items-center space-x-3 mb-3">
+        <div class="p-2.5 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 text-indigo-400">
+          <i data-lucide="hard-drive" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-white">Google Drive Cloud Storage Setup</h3>
+          <p class="text-slate-400 text-[11px]">Syncing for user: <span id="onboard-user-badge" class="text-indigo-300 font-semibold">User</span></p>
+        </div>
+      </div>
+      <p class="text-slate-300 leading-relaxed mb-4">
+        To store files and installed applications directly in your Google Drive without local device persistence, input your Google OAuth Client ID and API Key. This information is saved securely in the Admin Google Sheet for your account.
+      </p>
+      <div class="space-y-3 mb-5">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Google OAuth Client ID</label>
+          <input type="text" id="onboard-client-id" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500 text-[11px]" placeholder="12345678-xxx.apps.googleusercontent.com">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Google Drive API Key</label>
+          <input type="password" id="onboard-api-key" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500 text-[11px]" placeholder="AIzaSy...">
+        </div>
+      </div>
+      <div class="flex items-center justify-end space-x-2.5">
+        <button onclick="DriveStorage.skipOnboarding()" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 rounded-xl transition">Use Virtual Cloud RAM</button>
+        <button onclick="DriveStorage.saveOnboardingSettings()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 font-semibold text-white rounded-xl shadow-lg transition">Save & Connect Drive</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPS SCRIPT URL & CODE SETUP MODAL -->
+  <div id="apps-script-setup-modal" class="fixed inset-0 z-[100000] hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="acrylic rounded-2xl p-6 max-w-2xl w-full border border-white/20 shadow-2xl flex flex-col max-h-[85vh] text-xs">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="file-code" class="w-5 h-5 text-indigo-400"></i>
+          <h3 class="font-bold text-white text-sm">Google Apps Script & Sheet Integration</h3>
+        </div>
+        <button onclick="document.getElementById('apps-script-setup-modal').classList.add('hidden')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto space-y-4 pr-1">
+        <div>
+          <label class="block font-medium text-white mb-1">Current Apps Script Web App URL</label>
+          <div class="flex space-x-2">
+            <input type="text" id="cfg-appscript-url" class="flex-1 bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-indigo-500" placeholder="https://script.google.com/macros/s/.../exec">
+            <button onclick="AuthEngine.saveAppScriptUrl()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium">Save URL</button>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">This endpoint handles logins, user registration, email recovery, and syncs Drive API credentials.</p>
+        </div>
+
+        <div class="border-t border-white/10 pt-3">
+          <div class="flex justify-between items-center mb-1.5">
+            <h4 class="font-semibold text-white">Apps Script Source Code (Code.gs)</h4>
+            <button onclick="ClipboardSystem.copyText(document.getElementById('code-gs-block').innerText)" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg text-[10px] flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3 h-3"></i>
+              <span>Copy Code.gs</span>
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-300 mb-2">Create a Google Sheet, click <em>Extensions → Apps Script</em>, paste this code, and deploy as a Web App (Execute as: <strong>Me</strong>, Who has access: <strong>Anyone</strong>).</p>
+          <pre id="code-gs-block" class="bg-black/60 p-3 rounded-xl border border-white/10 font-mono text-[10px] text-emerald-400 overflow-x-auto whitespace-pre select-all max-h-56"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESKTOP WORKSPACE AREA -->
+  <div id="desktop-area" class="relative w-full h-[calc(100%-48px)] overflow-hidden p-3 sm:p-4 touch-none" oncontextmenu="Desktop.openContextMenu(event); return false;">
+    
+    <!-- Desktop Interactive Widgets Layer (Right aligned on tablet & desktop) -->
+    <div id="desktop-widgets" class="absolute top-4 right-4 z-10 flex flex-col space-y-3 pointer-events-auto max-w-[280px] w-full hidden md:flex">
+      
+      <!-- Clock & Calendar Mini Widget -->
+      <div class="acrylic rounded-2xl p-3 border border-white/15 shadow-xl text-xs select-none">
+        <div class="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
+          <div class="flex items-center space-x-1.5 text-indigo-400 font-semibold">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+            <span>Calendar</span>
+          </div>
+          <button onclick="AppManager.launch('calendar')" class="text-[10px] text-slate-400 hover:text-white">Full View</button>
+        </div>
+        <div class="flex items-baseline justify-between mb-1">
+          <span id="widget-clock" class="text-2xl font-bold text-white font-mono">12:00</span>
+          <span id="widget-date" class="text-[10px] text-slate-300 font-medium">Sat, Sep 19</span>
+        </div>
+        <div id="widget-cal-mini" class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-300"></div>
+      </div>
+
+      <!-- Quick To-Do Sticky Widget -->
+      <div class="acrylic rounded-2xl p-3 border border-white/15 shadow-xl text-xs select-none flex flex-col max-h-56">
+        <div class="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
+          <div class="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+            <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+            <span>Quick To-Do</span>
+          </div>
+          <button onclick="AppManager.launch('todo')" class="text-[10px] text-slate-400 hover:text-white">Open App</button>
+        </div>
+        <div class="flex space-x-1 mb-2">
+          <input type="text" id="widget-todo-input" placeholder="New task..." class="flex-1 bg-black/40 border border-white/15 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" onkeydown="if(event.key==='Enter') TodoEngine.addFromWidget()">
+          <button onclick="TodoEngine.addFromWidget()" class="p-1 bg-emerald-600 rounded-lg text-white hover:bg-emerald-500"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div id="widget-todo-list" class="flex-1 overflow-y-auto space-y-1 pr-1"></div>
+      </div>
+    </div>
+
+    <!-- Desktop Icons Container (Mobile & Tablet responsive flow) -->
+    <div id="desktop-icons-container" class="grid grid-flow-col grid-rows-5 sm:grid-rows-6 md:grid-rows-7 gap-2 sm:gap-3 w-fit h-full content-start select-none z-10 relative">
+      <!-- Generated dynamically by JS -->
+    </div>
+
+    <!-- Windows Canvas Layer -->
+    <div id="windows-container" class="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+      <!-- Draggable/Resizable windows dynamically injected here -->
+    </div>
+
+    <!-- Drag Selection Marquee -->
+    <div id="selection-box" class="hidden absolute border border-indigo-500/70 bg-indigo-500/20 rounded pointer-events-none z-10"></div>
+  </div>
+
+  <!-- FLOATING, RESIZABLE, AND DRAGGABLE VIRTUAL KEYBOARD WITH SYMBOLS -->
+  <div id="virtual-keyboard-window" class="hidden fixed bottom-14 left-1/2 -translate-x-1/2 acrylic rounded-3xl shadow-2xl border border-white/20 p-2.5 sm:p-3 z-[99990] flex flex-col select-none touch-none w-[95vw] max-w-[820px] min-w-[320px] min-h-[220px]">
+    <!-- Keyboard Titlebar / Drag Handle -->
+    <div id="vk-titlebar" class="h-8 flex items-center justify-between px-2 cursor-move border-b border-white/10 pb-1.5 mb-1.5 text-xs text-slate-300">
+      <div class="flex items-center space-x-2 font-medium">
+        <i data-lucide="keyboard" class="w-4 h-4 text-indigo-400"></i>
+        <span>Virtual Keyboard</span>
+        <span id="vk-symbol-badge" class="hidden px-1.5 py-0.5 rounded text-[9px] bg-amber-500/30 text-amber-300 font-bold uppercase">SYM</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <!-- Switch to native device default keyboard -->
+        <button onclick="VirtualKeyboard.useNativeDeviceKeyboard()" class="text-[10px] px-2 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 flex items-center space-x-1 transition" title="Use device hardware/native touch keyboard">
+          <i data-lucide="smartphone" class="w-3 h-3"></i>
+          <span>Device Keyboard</span>
+        </button>
+        <button onclick="VirtualKeyboard.toggleAutoPopup()" id="vk-autopopup-btn" class="text-[10px] px-2 py-1 rounded-lg bg-indigo-600/40 text-indigo-200" title="Toggle Auto-Open on inputs">Auto: ON</button>
+        <button onclick="VirtualKeyboard.hide()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+
+    <!-- Keyboard Keys Layout Grid -->
+    <div id="vk-keys-container" class="flex-1 flex flex-col justify-between py-1 gap-1">
+      <!-- Generated dynamically with symbols shift logic -->
+    </div>
+
+    <!-- Keyboard Bottom Resize Gripper -->
+    <div id="vk-resize-handle" class="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize">
+      <svg class="w-full h-full text-white/30" viewBox="0 0 16 16"><path fill="currentColor" d="M14 14H12V12H14V14ZM14 10H12V8H14V10ZM10 14H8V12H10V14ZM14 6H12V4H14V6ZM6 14H4V12H6V14Z"/></svg>
+    </div>
+  </div>
+
+  <!-- TASKBAR (FIXED BOTTOM) -->
+  <footer id="taskbar" class="absolute bottom-0 left-0 right-0 h-12 acrylic border-t border-white/10 z-50 flex items-center justify-between px-2 sm:px-3">
+    <!-- Left: Start & Pinned Apps -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2 h-full">
+      <button id="start-btn" onclick="Desktop.toggleStartMenu()" class="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/15 active:scale-95 transition text-indigo-400 font-bold focus:outline-none">
+        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Search Trigger Button -->
+      <button onclick="Desktop.toggleStartMenu(true)" class="hidden sm:flex items-center space-x-2 px-3 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/5 transition">
+        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400"></i>
+        <span class="text-[11px]">Search Drive, apps...</span>
+      </button>
+
+      <div class="h-5 w-[1px] bg-white/15 mx-0.5 hidden md:block"></div>
+
+      <!-- Taskbar App Running Items -->
+      <div id="taskbar-apps" class="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar max-w-[40vw]">
+        <!-- Task buttons injected -->
+      </div>
+    </div>
+
+    <!-- Right: System Tray Controls -->
+    <div class="flex items-center space-x-1 sm:space-x-2 h-full text-xs">
+      
+      <!-- Virtual Keyboard Quick Launcher -->
+      <button onclick="VirtualKeyboard.toggle()" class="p-2 hover:bg-white/10 rounded-xl transition text-slate-300" title="Virtual Keyboard">
+        <i data-lucide="keyboard" class="w-4 h-4 text-indigo-400"></i>
+      </button>
+
+      <!-- Control Panel Quick Launcher -->
+      <button onclick="AppManager.launch('control')" class="p-2 hover:bg-white/10 rounded-xl transition text-slate-300" title="Control Panel">
+        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-pink-400"></i>
+      </button>
+
+      <!-- Clipboard History Quick Launcher -->
+      <button onclick="ClipboardSystem.openHistoryModal()" class="p-2 hover:bg-white/10 rounded-xl transition text-slate-300" title="Clipboard Viewer">
+        <i data-lucide="clipboard" class="w-4 h-4 text-cyan-400"></i>
+      </button>
+
+      <!-- Google Drive Cloud Status Indicator -->
+      <button onclick="AppManager.launch('settings', { tab: 'drive' })" id="tray-drive-status" class="flex items-center space-x-1.5 px-2 py-1 rounded-xl hover:bg-white/10 transition text-slate-200">
+        <i data-lucide="cloud" class="w-4 h-4 text-amber-400" id="tray-cloud-icon"></i>
+        <span id="tray-cloud-text" class="hidden lg:inline text-[11px] font-medium text-amber-300">Virtual Cloud</span>
+      </button>
+
+      <!-- Clock & Calendar Trigger -->
+      <button onclick="Desktop.toggleCalendar()" class="px-2 py-1 hover:bg-white/10 rounded-xl transition flex flex-col items-end leading-tight select-none">
+        <span id="tray-clock" class="font-semibold text-xs text-white">12:00</span>
+        <span id="tray-date" class="text-[9px] text-slate-400 hidden sm:inline">2026-09-19</span>
+      </button>
+
+      <!-- Show Desktop Peek Bar -->
+      <div class="w-1.5 h-7 hover:bg-white/30 rounded-sm cursor-pointer ml-1" title="Show Desktop" onclick="WindowManager.minimizeAll()"></div>
+    </div>
+  </footer>
+
+  <!-- START MENU -->
+  <div id="start-menu" class="hidden absolute bottom-14 left-2 sm:left-3 w-80 sm:w-96 acrylic rounded-3xl p-4 shadow-2xl border border-white/15 z-50 flex flex-col space-y-3.5">
+    <!-- User Header -->
+    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+      <div class="flex items-center space-x-2.5">
+        <div id="user-avatar-badge" class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white shadow">
+          <i data-lucide="user" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h4 id="start-user-name" class="font-semibold text-xs text-white leading-tight">Guest User</h4>
+          <p id="start-user-sub" class="text-[10px] text-slate-400 truncate max-w-[140px]">Connected</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-1">
+        <button onclick="AuthEngine.openChangePasswordDialog()" class="px-2 py-1 text-[10px] bg-white/10 hover:bg-white/20 rounded-lg text-slate-300" title="Change Password">
+          <i data-lucide="key" class="w-3.5 h-3.5"></i>
+        </button>
+        <button onclick="AuthEngine.logout()" class="px-2 py-1 text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg" title="Sign Out">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Input -->
+    <div class="relative">
+      <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
+      <input type="text" id="start-search-input" placeholder="Search apps, files..." oninput="Desktop.filterStartApps(this.value)"
+             class="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+    </div>
+
+    <!-- Apps Grid -->
+    <div>
+      <div class="flex justify-between items-center mb-1.5 text-[11px] text-slate-400 font-medium">
+        <span>Installed Applications</span>
+        <button onclick="AppManager.launch('installer')" class="text-indigo-400 hover:underline flex items-center space-x-0.5 text-[10px]">
+          <i data-lucide="plus" class="w-3 h-3"></i>
+          <span>Add Custom App</span>
+        </button>
+      </div>
+      <div id="start-apps-grid" class="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+
+    <!-- Quick Footer Actions -->
+    <div class="pt-2 border-t border-white/10 flex justify-between items-center text-xs">
+      <button onclick="AppManager.launch('control')" class="flex items-center space-x-1.5 px-2.5 py-1.5 hover:bg-white/10 rounded-xl text-slate-300 transition">
+        <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+        <span>Control Panel</span>
+      </button>
+      <button onclick="AppManager.launch('settings')" class="flex items-center space-x-1.5 px-2.5 py-1.5 hover:bg-white/10 rounded-xl text-slate-300 transition">
+        <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+        <span>Settings</span>
+      </button>
+      <button onclick="AppManager.launch('terminal')" class="flex items-center space-x-1.5 px-2.5 py-1.5 hover:bg-white/10 rounded-xl text-slate-300 transition">
+        <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+        <span>Terminal</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT CLICK CONTEXT MENU -->
+  <div id="context-menu" class="hidden absolute acrylic rounded-2xl shadow-2xl border border-white/15 py-1.5 w-52 text-xs z-50 divide-y divide-white/5">
+    <div class="py-1">
+      <button onclick="DriveStorage.createNewItemPrompt('folder'); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="folder-plus" class="w-4 h-4 text-amber-400"></i>
+        <span>New Cloud Folder</span>
+      </button>
+      <button onclick="DriveStorage.createNewItemPrompt('file'); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="file-plus" class="w-4 h-4 text-blue-400"></i>
+        <span>New Document</span>
+      </button>
+    </div>
+    <div class="py-1">
+      <button onclick="ClipboardSystem.pasteFromClipboard(); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="clipboard" class="w-4 h-4 text-emerald-400"></i>
+        <span>Paste from Clipboard</span>
+      </button>
+      <button onclick="AppManager.launch('installer'); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="package-plus" class="w-4 h-4 text-indigo-400"></i>
+        <span>Install Custom Code App</span>
+      </button>
+      <button onclick="DriveStorage.triggerFileUpload(); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="upload-cloud" class="w-4 h-4 text-cyan-400"></i>
+        <span>Upload File to Drive</span>
+      </button>
+    </div>
+    <div class="py-1">
+      <button onclick="VirtualKeyboard.toggle(); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="keyboard" class="w-4 h-4 text-purple-400"></i>
+        <span>Virtual Keyboard</span>
+      </button>
+      <button onclick="AppManager.launch('settings', { tab: 'wallpapers' }); Desktop.closeContextMenu();" class="flex items-center space-x-2 w-full px-3 py-1.5 hover:bg-white/10 text-left text-slate-200">
+        <i data-lucide="image" class="w-4 h-4 text-pink-400"></i>
+        <span>Change Wallpaper</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- CALENDAR POPOVER -->
+  <div id="calendar-popover" class="hidden absolute bottom-14 right-2 sm:right-3 acrylic rounded-2xl p-4 shadow-2xl border border-white/15 w-72 z-50 text-xs">
+    <div class="flex items-center justify-between mb-3">
+      <h3 id="cal-month-year" class="font-semibold text-white">September 2026</h3>
+      <div class="flex space-x-1">
+        <button class="p-1 hover:bg-white/10 rounded" onclick="CalendarView.prevMonth()"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <button class="p-1 hover:bg-white/10 rounded" onclick="CalendarView.nextMonth()"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+    <div class="grid grid-cols-7 gap-1 text-center font-medium text-slate-400 text-[10px] mb-2">
+      <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    <div id="cal-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+  </div>
+
+  <!-- NOTIFICATION CONTAINER -->
+  <div id="notification-center" class="fixed top-4 right-4 z-[99999] flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- HIDDEN NATIVE UPLOAD INPUT -->
+  <input type="file" id="global-cloud-file-input" class="hidden" multiple onchange="DriveStorage.handleNativeFileInput(event)">
+
+  <!-- MODAL / PROMPT DIALOG -->
+  <div id="system-modal" class="hidden fixed inset-0 z-[100000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div class="acrylic rounded-3xl p-5 max-w-md w-full border border-white/20 shadow-2xl">
+      <div class="flex items-center space-x-3 mb-3">
+        <div id="modal-icon-container" class="w-9 h-9 rounded-2xl bg-indigo-600/30 flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+          <i data-lucide="info" class="w-5 h-5"></i>
+        </div>
+        <h3 id="modal-title" class="font-semibold text-white text-sm">Notice</h3>
+      </div>
+      <p id="modal-message" class="text-xs text-slate-300 mb-4 leading-relaxed"></p>
+      <div id="modal-prompt-wrap" class="hidden mb-4">
+        <input type="text" id="modal-prompt-input" class="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button id="modal-cancel-btn" class="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs text-slate-300 transition">Cancel</button>
+        <button id="modal-confirm-btn" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white shadow transition">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT SYSTEM ENGINE -->
+  <script>
+    const APPS_SCRIPT_SOURCE = `/**
+ * CloudOS Google Apps Script Backend (Code.gs)
+ * Automatically initializes sheets, columns, handles authentication,
+ * password recovery via MailApp, and stores Google Drive user tokens.
+ */
+function doGet(e) {
+  return handleRequest(e);
+}
+
+function doPost(e) {
+  return handleRequest(e);
+}
+
+function handleRequest(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  try {
+    const sheet = initDatabaseSheet();
+    const params = e.parameter || {};
+    const postData = e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
+    const payload = Object.assign({}, params, postData);
+    const action = payload.action;
+
+    let result = { success: false, message: 'Invalid Action' };
+
+    switch(action) {
+      case 'register':
+        result = handleRegister(sheet, payload);
+        break;
+      case 'login':
+        result = handleLogin(sheet, payload);
+        break;
+      case 'forgotPassword':
+        result = handleForgotPassword(sheet, payload);
+        break;
+      case 'changePassword':
+        result = handleChangePassword(sheet, payload);
+        break;
+      case 'saveDriveSettings':
+        result = handleSaveDriveSettings(sheet, payload);
+        break;
+      case 'getDriveSettings':
+        result = handleGetDriveSettings(sheet, payload);
+        break;
+      case 'ping':
+        result = { success: true, message: 'CloudOS Apps Script Backend Operational' };
+        break;
+      default:
+        result = { success: false, message: 'Action ' + action + ' unknown.' };
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function initDatabaseSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('CloudOS_Users');
+  if (!sheet) {
+    sheet = ss.insertSheet('CloudOS_Users');
+  }
+  const headers = ['UserID', 'Username', 'Email', 'Password', 'DriveClientId', 'DriveApiKey', 'InstalledAppsJSON', 'CreatedAt', 'LastLogin'];
+  const currentHeaders = sheet.getRange(1, 1, 1, Math.max(headers.length, sheet.getLastColumn() || 1)).getValues()[0];
+  
+  const headersMatch = headers.every((h, i) => currentHeaders[i] === h);
+  if (!headersMatch || sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#e0e7ff');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function handleRegister(sheet, data) {
+  const email = (data.email || '').trim().toLowerCase();
+  const username = (data.username || '').trim();
+  const password = data.password || '';
+
+  if (!email || !username || !password) {
+    return { success: false, message: 'All fields (email, username, password) are required.' };
+  }
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][1].toString().toLowerCase() === username.toLowerCase()) {
+      return { success: false, message: 'Username is already taken.' };
+    }
+    if (values[i][2].toString().toLowerCase() === email) {
+      return { success: false, message: 'Email address is already registered.' };
+    }
+  }
+
+  const userId = 'usr_' + Utilities.getUuid().slice(0, 8);
+  const now = new Date().toISOString();
+  sheet.appendRow([userId, username, email, password, '', '', '[]', now, now]);
+
+  return {
+    success: true,
+    message: 'User registered successfully!',
+    user: { userId: userId, username: username, email: email, isNewUser: true }
+  };
+}
+
+function handleLogin(sheet, data) {
+  const userOrEmail = (data.username || '').trim().toLowerCase();
+  const password = data.password || '';
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    const rowUser = values[i][1].toString().toLowerCase();
+    const rowEmail = values[i][2].toString().toLowerCase();
+    const rowPass = values[i][3].toString();
+
+    if ((rowUser === userOrEmail || rowEmail === userOrEmail) && rowPass === password) {
+      sheet.getRange(i + 1, 9).setValue(new Date().toISOString());
+      return {
+        success: true,
+        message: 'Login successful!',
+        user: {
+          userId: values[i][0],
+          username: values[i][1],
+          email: values[i][2],
+          driveClientId: values[i][4] || '',
+          driveApiKey: values[i][5] || '',
+          installedApps: values[i][6] ? JSON.parse(values[i][6]) : []
+        }
+      };
+    }
+  }
+  return { success: false, message: 'Invalid credentials. Check username/password.' };
+}
+
+function handleForgotPassword(sheet, data) {
+  const email = (data.email || '').trim().toLowerCase();
+  if (!email) return { success: false, message: 'Please provide an email address.' };
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][2].toString().toLowerCase() === email) {
+      const username = values[i][1];
+      const password = values[i][3];
+      
+      MailApp.sendEmail({
+        to: email,
+        subject: 'CloudOS — Your Account Password Recovery',
+        htmlBody: '<div style="font-family:sans-serif;padding:20px;border-radius:8px;background:#f3f4f6;">' +
+                  '<h2>CloudOS Account Recovery</h2>' +
+                  '<p>Hello <strong>' + username + '</strong>,</p>' +
+                  '<p>Your password is: <code style="font-size:16px;background:#e2e8f0;padding:4px 8px;border-radius:4px;">' + password + '</code></p>' +
+                  '<p>You can now return to CloudOS and sign in.</p></div>'
+      });
+
+      return { success: true, message: 'Password has been emailed to ' + email };
+    }
+  }
+  return { success: false, message: 'No registered user found with that email address.' };
+}
+
+function handleChangePassword(sheet, data) {
+  const username = (data.username || '').trim().toLowerCase();
+  const oldPassword = data.oldPassword || '';
+  const newPassword = data.newPassword || '';
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][1].toString().toLowerCase() === username && values[i][3].toString() === oldPassword) {
+      sheet.getRange(i + 1, 4).setValue(newPassword);
+      return { success: true, message: 'Password changed successfully.' };
+    }
+  }
+  return { success: false, message: 'Incorrect existing password.' };
+}
+
+function handleSaveDriveSettings(sheet, data) {
+  const username = (data.username || '').trim().toLowerCase();
+  const clientId = data.clientId || '';
+  const apiKey = data.apiKey || '';
+  const installedAppsJSON = data.installedAppsJSON || '';
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][1].toString().toLowerCase() === username) {
+      if (clientId) sheet.getRange(i + 1, 5).setValue(clientId);
+      if (apiKey) sheet.getRange(i + 1, 6).setValue(apiKey);
+      if (installedAppsJSON) sheet.getRange(i + 1, 7).setValue(installedAppsJSON);
+      return { success: true, message: 'Settings saved to Admin Google Sheet.' };
+    }
+  }
+  return { success: false, message: 'User not found in spreadsheet.' };
+}
+
+function handleGetDriveSettings(sheet, data) {
+  const username = (data.username || '').trim().toLowerCase();
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][1].toString().toLowerCase() === username) {
+      return {
+        success: true,
+        driveClientId: values[i][4] || '',
+        driveApiKey: values[i][5] || '',
+        installedApps: values[i][6] ? JSON.parse(values[i][6]) : []
+      };
+    }
+  }
+  return { success: false, message: 'User settings not found.' };
+}`;
+
+    const SoundEngine = {
+      ctx: null,
+      volume: 0.8,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+      },
+      playTone(freq, type = 'sine', duration = 0.06) {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.08 * this.volume, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      },
+      click() { this.playTone(850, 'triangle', 0.03); },
+      open() { this.playTone(520, 'sine', 0.09); },
+      alarm() {
+        this.playTone(880, 'sawtooth', 0.3);
+        setTimeout(() => this.playTone(1100, 'sawtooth', 0.3), 320);
+      },
+      notify() {
+        this.playTone(550, 'sine', 0.06);
+        setTimeout(() => this.playTone(880, 'sine', 0.12), 70);
+      }
+    };
+
+    const Notifications = {
+      show(title, message, type = 'info') {
+        SoundEngine.notify();
+        const container = document.getElementById('notification-center');
+        const toast = document.createElement('div');
+        toast.className = 'acrylic pointer-events-auto rounded-2xl p-3 border border-white/20 shadow-2xl flex items-start space-x-3 w-80 transform translate-x-8 opacity-0 transition-all duration-300';
+        
+        let icon = 'info', color = 'text-indigo-400';
+        if (type === 'success') { icon = 'check-circle-2'; color = 'text-emerald-400'; }
+        if (type === 'warn') { icon = 'alert-triangle'; color = 'text-amber-400'; }
+        if (type === 'error') { icon = 'alert-octagon'; color = 'text-red-400'; }
+
+        toast.innerHTML = `
+          <div class="mt-0.5 ${color} flex-shrink-0"><i data-lucide="${icon}" class="w-4 h-4"></i></div>
+          <div class="flex-1">
+            <h5 class="text-xs font-semibold text-white">${title}</h5>
+            <p class="text-[11px] text-slate-300 leading-snug">${message}</p>
+          </div>
+          <button class="text-slate-400 hover:text-white" onclick="this.parentElement.remove()"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+        `;
+        container.appendChild(toast);
+        lucide.createIcons();
+        setTimeout(() => toast.classList.remove('translate-x-8', 'opacity-0'), 10);
+        setTimeout(() => {
+          toast.classList.add('translate-x-8', 'opacity-0');
+          setTimeout(() => toast.remove(), 300);
+        }, 4500);
+      }
+    };
+
+    const SystemDialog = {
+      show({ title, message, prompt = false, defaultValue = '', onConfirm, onCancel }) {
+        const modal = document.getElementById('system-modal');
+        const titleEl = document.getElementById('modal-title');
+        const msgEl = document.getElementById('modal-message');
+        const promptWrap = document.getElementById('modal-prompt-wrap');
+        const promptInput = document.getElementById('modal-prompt-input');
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+
+        titleEl.textContent = title || 'Notice';
+        msgEl.textContent = message || '';
+
+        if (prompt) {
+          promptWrap.classList.remove('hidden');
+          promptInput.value = defaultValue;
+          setTimeout(() => promptInput.focus(), 50);
+        } else {
+          promptWrap.classList.add('hidden');
+        }
+        modal.classList.remove('hidden');
+
+        const cleanUp = () => {
+          modal.classList.add('hidden');
+          confirmBtn.onclick = null;
+          cancelBtn.onclick = null;
+        };
+
+        confirmBtn.onclick = () => {
+          const val = prompt ? promptInput.value : true;
+          cleanUp();
+          if (onConfirm) onConfirm(val);
+        };
+        cancelBtn.onclick = () => {
+          cleanUp();
+          if (onCancel) onCancel();
+        };
+      }
+    };
+
+    const ClipboardSystem = {
+      history: ['Welcome to CloudOS Universal Clipboard'],
+      currentActiveInput: null,
+
+      init() {
+        document.addEventListener('focusin', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            this.currentActiveInput = e.target;
+            if (VirtualKeyboard.autoPopup && window.innerWidth < 1024 && !VirtualKeyboard.preferNativeKeyboard) {
+              VirtualKeyboard.show();
+            }
+          }
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+            const sel = window.getSelection().toString();
+            if (sel) this.copyText(sel, false);
+          }
+        });
+      },
+
+      copyText(text, showToast = true) {
+        if (!text) return;
+        this.history.unshift(text);
+        if (this.history.length > 25) this.history.pop();
+
+        const tempTextArea = document.createElement('textarea');
+        tempTextArea.value = text;
+        tempTextArea.style.position = 'fixed';
+        tempTextArea.style.opacity = '0';
+        document.body.appendChild(tempTextArea);
+        tempTextArea.focus();
+        tempTextArea.select();
+        try {
+          document.execCommand('copy');
+          if (showToast) Notifications.show('Clipboard', 'Copied to clipboard!', 'success');
+        } catch (err) {
+          console.warn('execCommand copy failed', err);
+        }
+        document.body.removeChild(tempTextArea);
+      },
+
+      pasteFromClipboard() {
+        if (!this.history.length) {
+          Notifications.show('Clipboard', 'Clipboard is empty.', 'warn');
+          return;
+        }
+        const text = this.history[0];
+        if (this.currentActiveInput) {
+          const start = this.currentActiveInput.selectionStart || 0;
+          const end = this.currentActiveInput.selectionEnd || 0;
+          const val = this.currentActiveInput.value;
+          this.currentActiveInput.value = val.substring(0, start) + text + val.substring(end);
+          this.currentActiveInput.selectionStart = this.currentActiveInput.selectionEnd = start + text.length;
+          this.currentActiveInput.dispatchEvent(new Event('input', { bubbles: true }));
+          Notifications.show('Clipboard', 'Pasted content!', 'info');
+        } else {
+          Notifications.show('Clipboard Text', text, 'info');
+        }
+      },
+
+      openHistoryModal() {
+        SystemDialog.show({
+          title: 'Clipboard History',
+          message: this.history.map((h, i) => `${i + 1}. ${h.slice(0, 60)}${h.length > 60 ? '...' : ''}`).join('\n\n') || 'Empty clipboard'
+        });
+      }
+    };
+
+    /* ENHANCED VIRTUAL KEYBOARD WITH SYMBOLS & RESIZE */
+    const VirtualKeyboard = {
+      isShift: false,
+      isCaps: false,
+      isCtrl: false,
+      isAlt: false,
+      autoPopup: true,
+      preferNativeKeyboard: false,
+
+      // Normal keys vs Shift symbols mapping
+      keysNormal: [
+        ['Esc', '`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
+        ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
+        ['Caps', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Enter'],
+        ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
+        ['Ctrl', 'Alt', 'Copy', 'Paste', 'Space', 'Left', 'Right', 'Clear', 'Close']
+      ],
+
+      keysShiftSymbols: [
+        ['Esc', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 'Backspace'],
+        ['Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'],
+        ['Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Enter'],
+        ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 'Shift'],
+        ['Ctrl', 'Alt', 'Copy', 'Paste', 'Space', 'Left', 'Right', 'Clear', 'Close']
+      ],
+
+      init() {
+        this.renderKeys();
+        this.setupDragging();
+        this.setupResizing();
+        this.setupAutoDismiss();
+      },
+
+      renderKeys() {
+        const container = document.getElementById('vk-keys-container');
+        container.innerHTML = '';
+        const layout = (this.isShift || this.isCaps) ? this.keysShiftSymbols : this.keysNormal;
+
+        layout.forEach(row => {
+          const rowDiv = document.createElement('div');
+          rowDiv.className = 'flex space-x-1 w-full flex-1';
+
+          row.forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = 'vkey py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 active:bg-indigo-600 text-white font-mono text-xs sm:text-sm flex items-center justify-center transition border border-white/10 shadow flex-1 font-semibold';
+            
+            if (['Backspace', 'Enter', 'Tab', 'Caps', 'Shift'].includes(key)) {
+              btn.classList.add('flex-[1.6]', 'bg-indigo-950/50', 'text-indigo-200');
+            }
+            if (key === 'Space') btn.classList.add('flex-[4]');
+            if (['Copy', 'Paste'].includes(key)) btn.classList.add('bg-emerald-950/50', 'text-emerald-300');
+            if (key === 'Shift' && this.isShift) btn.classList.add('bg-indigo-600', 'text-white');
+            if (key === 'Caps' && this.isCaps) btn.classList.add('bg-amber-600', 'text-white');
+
+            btn.textContent = key;
+            btn.onpointerdown = (e) => {
+              e.preventDefault();
+              SoundEngine.click();
+              this.handleKeyPress(key);
+            };
+            rowDiv.appendChild(btn);
+          });
+          container.appendChild(rowDiv);
+        });
+
+        const badge = document.getElementById('vk-symbol-badge');
+        if (badge) badge.classList.toggle('hidden', !(this.isShift || this.isCaps));
+      },
+
+      handleKeyPress(key) {
+        const input = ClipboardSystem.currentActiveInput;
+
+        if (key === 'Close') { this.hide(); return; }
+        if (key === 'Caps') { this.isCaps = !this.isCaps; this.renderKeys(); return; }
+        if (key === 'Shift') { this.isShift = !this.isShift; this.renderKeys(); return; }
+        if (key === 'Ctrl') { this.isCtrl = !this.isCtrl; return; }
+        if (key === 'Alt') { this.isAlt = !this.isAlt; return; }
+        if (key === 'Copy') {
+          if (input) ClipboardSystem.copyText(input.value.substring(input.selectionStart, input.selectionEnd) || input.value);
+          return;
+        }
+        if (key === 'Paste') { ClipboardSystem.pasteFromClipboard(); return; }
+        if (key === 'Clear') {
+          if (input) { input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); }
+          return;
+        }
+
+        if (!input) {
+          Notifications.show('Virtual Keyboard', `Pressed: ${key} (Focus an input box to type)`, 'info');
+          return;
+        }
+
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        let char = key;
+
+        if (key === 'Space') char = ' ';
+        else if (key === 'Tab') char = '  ';
+        else if (key === 'Enter') char = '\n';
+        else if (key === 'Backspace') {
+          if (start > 0 || end > start) {
+            const cutStart = start === end ? start - 1 : start;
+            input.value = input.value.substring(0, cutStart) + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = cutStart;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          return;
+        } else if (key === 'Left') {
+          input.selectionStart = input.selectionEnd = Math.max(0, start - 1);
+          return;
+        } else if (key === 'Right') {
+          input.selectionStart = input.selectionEnd = Math.min(input.value.length, start + 1);
+          return;
+        }
+
+        input.value = input.value.substring(0, start) + char + input.value.substring(end);
+        input.selectionStart = input.selectionEnd = start + char.length;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // Auto-revert Shift if active
+        if (this.isShift) {
+          this.isShift = false;
+          this.renderKeys();
+        }
+      },
+
+      setupDragging() {
+        const el = document.getElementById('virtual-keyboard-window');
+        const handle = document.getElementById('vk-titlebar');
+        let isDragging = false, startX, startY, origX, origY;
+
+        const onPointerDown = (e) => {
+          if (e.target.closest('button')) return;
+          isDragging = true;
+          const pt = e.touches ? e.touches[0] : e;
+          startX = pt.clientX;
+          startY = pt.clientY;
+          origX = el.offsetLeft;
+          origY = el.offsetTop;
+          el.style.transform = 'none';
+        };
+
+        const onPointerMove = (e) => {
+          if (!isDragging) return;
+          const pt = e.touches ? e.touches[0] : e;
+          el.style.left = `${Math.max(10, Math.min(window.innerWidth - el.offsetWidth - 10, origX + (pt.clientX - startX)))}px`;
+          el.style.top = `${Math.max(10, Math.min(window.innerHeight - el.offsetHeight - 50, origY + (pt.clientY - startY)))}px`;
+        };
+
+        const onPointerUp = () => { isDragging = false; };
+
+        handle.addEventListener('mousedown', onPointerDown);
+        handle.addEventListener('touchstart', onPointerDown, { passive: true });
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('touchmove', onPointerMove, { passive: true });
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchend', onPointerUp);
+      },
+
+      setupResizing() {
+        const el = document.getElementById('virtual-keyboard-window');
+        const handle = document.getElementById('vk-resize-handle');
+        let isResizing = false, sw, sh, mx, my;
+
+        const onStart = (e) => {
+          isResizing = true;
+          const pt = e.touches ? e.touches[0] : e;
+          sw = el.offsetWidth;
+          sh = el.offsetHeight;
+          mx = pt.clientX;
+          my = pt.clientY;
+          e.stopPropagation();
+        };
+
+        const onMove = (e) => {
+          if (!isResizing) return;
+          const pt = e.touches ? e.touches[0] : e;
+          el.style.width = `${Math.max(320, sw + (pt.clientX - mx))}px`;
+          el.style.height = `${Math.max(200, sh + (pt.clientY - my))}px`;
+        };
+
+        const onEnd = () => { isResizing = false; };
+
+        handle.addEventListener('mousedown', onStart);
+        handle.addEventListener('touchstart', onStart, { passive: true });
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, { passive: true });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+      },
+
+      setupAutoDismiss() {
+        // Auto-hide virtual keyboard when clicking/tapping outside
+        document.addEventListener('pointerdown', (e) => {
+          const vkEl = document.getElementById('virtual-keyboard-window');
+          if (!vkEl.classList.contains('hidden')) {
+            const isClickInside = e.target.closest('#virtual-keyboard-window');
+            const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+            const isVkToggleBtn = e.target.closest('[title="Virtual Keyboard"]');
+            if (!isClickInside && !isInput && !isVkToggleBtn) {
+              this.hide();
+            }
+          }
+        });
+      },
+
+      useNativeDeviceKeyboard() {
+        this.preferNativeKeyboard = true;
+        this.hide();
+        if (ClipboardSystem.currentActiveInput) {
+          ClipboardSystem.currentActiveInput.focus();
+        }
+        Notifications.show('Device Keyboard', 'Using default physical/on-screen device keyboard.', 'info');
+      },
+
+      toggle() {
+        const el = document.getElementById('virtual-keyboard-window');
+        el.classList.toggle('hidden');
+        if (!el.classList.contains('hidden')) {
+          this.preferNativeKeyboard = false;
+          SoundEngine.open();
+        }
+      },
+      show() {
+        this.preferNativeKeyboard = false;
+        document.getElementById('virtual-keyboard-window').classList.remove('hidden');
+      },
+      hide() {
+        document.getElementById('virtual-keyboard-window').classList.add('hidden');
+      },
+      toggleAutoPopup() {
+        this.autoPopup = !this.autoPopup;
+        document.getElementById('vk-autopopup-btn').textContent = `Auto: ${this.autoPopup ? 'ON' : 'OFF'}`;
+        Notifications.show('Virtual Keyboard', `Auto-popup is now ${this.autoPopup ? 'Enabled' : 'Disabled'}`, 'info');
+      }
+    };
+
+    /* AUTH ENGINE WITH PERSISTENCE ACROSS REFRESH */
+    const AuthEngine = {
+      currentUser: null,
+      appScriptUrl: 'https://script.google.com/macros/s/AKfycbz_CloudOS_Default_Mock/exec',
+
+      init() {
+        document.getElementById('code-gs-block').innerText = APPS_SCRIPT_SOURCE;
+        
+        // Restore custom script endpoint from memory
+        const savedUrl = window.__clouddesktop_script_url || sessionStorage.getItem('cloudos_appscript_url');
+        if (savedUrl) {
+          this.appScriptUrl = savedUrl;
+          document.getElementById('cfg-appscript-url').value = savedUrl;
+        }
+
+        // Restore Session across page refresh
+        this.restoreSession();
+      },
+
+      restoreSession() {
+        try {
+          const raw = sessionStorage.getItem('cloudos_active_session');
+          if (raw) {
+            const savedUser = JSON.parse(raw);
+            if (savedUser && savedUser.username) {
+              this.currentUser = savedUser;
+              this.onLoginSuccess(false, true); // true = restored session
+            }
+          }
+        } catch (e) {
+          console.warn('Session restoration failed:', e);
+        }
+      },
+
+      saveSession(user) {
+        try {
+          sessionStorage.setItem('cloudos_active_session', JSON.stringify(user));
+        } catch (e) {}
+      },
+
+      clearSession() {
+        try {
+          sessionStorage.removeItem('cloudos_active_session');
+        } catch (e) {}
+      },
+
+      setTab(tab) {
+        ['login', 'register', 'forgot'].forEach(t => {
+          const form = document.getElementById(`form-${t}`);
+          const btn = document.getElementById(`auth-tab-${t}`);
+          if (t === tab) {
+            form.classList.remove('hidden');
+            btn.className = 'flex-1 py-2 rounded-lg font-medium text-white bg-indigo-600 shadow transition';
+          } else {
+            form.classList.add('hidden');
+            btn.className = 'flex-1 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition';
+          }
+        });
+      },
+
+      async callBackend(action, payload = {}) {
+        if (!this.appScriptUrl || this.appScriptUrl.includes('Default_Mock')) {
+          console.warn('Apps Script URL is default mock. Simulating backend response.');
+          return this.simulateBackend(action, payload);
+        }
+
+        try {
+          const bodyData = Object.assign({ action: action }, payload);
+          const response = await fetch(this.appScriptUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(bodyData)
+          });
+          return await response.json();
+        } catch (err) {
+          console.error('Apps Script Fetch Error:', err);
+          return { success: false, message: 'Apps Script Network Error: ' + err.message };
+        }
+      },
+
+      simulateBackend(action, payload) {
+        if (!window.__mockDb) {
+          window.__mockDb = [
+            { username: 'admin', email: 'admin@cloudos.internal', password: 'admin', driveClientId: '', driveApiKey: '', installedApps: [] }
+          ];
+        }
+
+        if (action === 'register') {
+          const exists = window.__mockDb.find(u => u.username.toLowerCase() === payload.username.toLowerCase() || u.email === payload.email);
+          if (exists) return { success: false, message: 'Username or Email already in use.' };
+          const newUser = {
+            userId: 'mock_' + Date.now(),
+            username: payload.username,
+            email: payload.email,
+            password: payload.password,
+            driveClientId: '',
+            driveApiKey: '',
+            installedApps: []
+          };
+          window.__mockDb.push(newUser);
+          return { success: true, message: 'Account created!', user: newUser };
+        }
+
+        if (action === 'login') {
+          const u = (payload.username || '').toLowerCase();
+          const user = window.__mockDb.find(acc => (acc.username.toLowerCase() === u || acc.email.toLowerCase() === u) && acc.password === payload.password);
+          if (user) return { success: true, user: user };
+          return { success: false, message: 'Invalid username or password (hint: demo admin/admin)' };
+        }
+
+        if (action === 'forgotPassword') {
+          const user = window.__mockDb.find(acc => acc.email.toLowerCase() === (payload.email || '').toLowerCase());
+          if (user) {
+            return { success: true, message: `[Simulated Email] Password '${user.password}' sent to ${user.email}` };
+          }
+          return { success: false, message: 'No registered user with this email.' };
+        }
+
+        if (action === 'changePassword') {
+          const user = window.__mockDb.find(acc => acc.username.toLowerCase() === (payload.username || '').toLowerCase() && acc.password === payload.oldPassword);
+          if (user) {
+            user.password = payload.newPassword;
+            return { success: true, message: 'Password updated successfully!' };
+          }
+          return { success: false, message: 'Incorrect current password.' };
+        }
+
+        if (action === 'saveDriveSettings') {
+          const user = window.__mockDb.find(acc => acc.username.toLowerCase() === (payload.username || '').toLowerCase());
+          if (user) {
+            user.driveClientId = payload.clientId || user.driveClientId;
+            user.driveApiKey = payload.apiKey || user.driveApiKey;
+            if (payload.installedAppsJSON) user.installedApps = JSON.parse(payload.installedAppsJSON);
+            return { success: true, message: 'Cloud Drive preferences saved.' };
+          }
+          return { success: false, message: 'User not found.' };
+        }
+
+        return { success: false, message: 'Action simulated.' };
+      },
+
+      async submitLogin(e) {
+        e.preventDefault();
+        const u = document.getElementById('login-username').value.trim();
+        const p = document.getElementById('login-password').value;
+
+        Notifications.show('Authenticating', 'Connecting to Admin Google Sheet...', 'info');
+        const res = await this.callBackend('login', { username: u, password: p });
+
+        if (res.success && res.user) {
+          this.currentUser = res.user;
+          this.saveSession(this.currentUser);
+          this.onLoginSuccess();
+        } else {
+          Notifications.show('Login Failed', res.message || 'Check credentials.', 'error');
+        }
+      },
+
+      async submitRegister(e) {
+        e.preventDefault();
+        const email = document.getElementById('reg-email').value.trim();
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+
+        Notifications.show('Registering', 'Recording to Google Sheet...', 'info');
+        const res = await this.callBackend('register', { email, username, password });
+
+        if (res.success && res.user) {
+          Notifications.show('Account Created', 'Registration successful! Opening Drive Setup.', 'success');
+          this.currentUser = res.user;
+          this.saveSession(this.currentUser);
+          this.onLoginSuccess(true);
+        } else {
+          Notifications.show('Registration Failed', res.message || 'Error occurred.', 'error');
+        }
+      },
+
+      async submitForgot(e) {
+        e.preventDefault();
+        const email = document.getElementById('forgot-email').value.trim();
+        Notifications.show('Sending Email', 'Apps Script is mailing password...', 'info');
+        const res = await this.callBackend('forgotPassword', { email });
+        if (res.success) {
+          Notifications.show('Password Dispatched', res.message, 'success');
+          this.setTab('login');
+        } else {
+          Notifications.show('Error', res.message, 'error');
+        }
+      },
+
+      onLoginSuccess(isNewRegistration = false, isRestored = false) {
+        document.getElementById('auth-gate-modal').classList.add('hidden');
+        document.getElementById('start-user-name').textContent = this.currentUser.username;
+        document.getElementById('start-user-sub').textContent = this.currentUser.email;
+
+        if (this.currentUser.installedApps && Array.isArray(this.currentUser.installedApps)) {
+          CustomAppEngine.installedApps = this.currentUser.installedApps;
+          CustomAppEngine.refreshDesktopIcons();
+        }
+
+        if (!isRestored) {
+          Notifications.show('Welcome to CloudOS', `Logged in as ${this.currentUser.username}`, 'success');
+        } else {
+          Notifications.show('Session Restored', `Welcome back, ${this.currentUser.username}!`, 'info');
+        }
+
+        if (isNewRegistration || (!this.currentUser.driveClientId && !this.currentUser.driveApiKey)) {
+          document.getElementById('onboard-user-badge').textContent = this.currentUser.username;
+          document.getElementById('drive-onboarding-modal').classList.remove('hidden');
+        } else {
+          DriveStorage.connectWithCredentials(this.currentUser.driveClientId, this.currentUser.driveApiKey);
+        }
+      },
+
+      openChangePasswordDialog() {
+        Desktop.closeStartMenu();
+        SystemDialog.show({
+          title: 'Change Account Password',
+          message: 'Enter Current Password and New Password separated by a comma (e.g. oldpass,newpass):',
+          prompt: true,
+          onConfirm: async (val) => {
+            if (!val || !val.includes(',')) {
+              Notifications.show('Format Error', 'Please enter "oldpassword,newpassword"', 'warn');
+              return;
+            }
+            const [oldP, newP] = val.split(',').map(s => s.trim());
+            const res = await AuthEngine.callBackend('changePassword', {
+              username: AuthEngine.currentUser.username,
+              oldPassword: oldP,
+              newPassword: newP
+            });
+            if (res.success) {
+              Notifications.show('Success', res.message, 'success');
+            } else {
+              Notifications.show('Error', res.message, 'error');
+            }
+          }
+        });
+      },
+
+      logout() {
+        this.clearSession();
+        this.currentUser = null;
+        DriveStorage.disconnectDrive();
+        Desktop.closeStartMenu();
+        document.getElementById('auth-gate-modal').classList.remove('hidden');
+        this.setTab('login');
+        Notifications.show('Logged Out', 'Session cleared safely.', 'info');
+      },
+
+      bypassLoginDemo() {
+        this.currentUser = { username: 'Guest User', email: 'guest@cloudos.internal', driveClientId: '', driveApiKey: '', installedApps: [] };
+        this.saveSession(this.currentUser);
+        this.onLoginSuccess();
+      },
+
+      openScriptConfigModal() {
+        document.getElementById('apps-script-setup-modal').classList.remove('hidden');
+      },
+
+      saveAppScriptUrl() {
+        const url = document.getElementById('cfg-appscript-url').value.trim();
+        if (url) {
+          this.appScriptUrl = url;
+          window.__clouddesktop_script_url = url;
+          try { sessionStorage.setItem('cloudos_appscript_url', url); } catch (e) {}
+          Notifications.show('Configuration Saved', 'Apps Script URL updated successfully!', 'success');
+          document.getElementById('apps-script-setup-modal').classList.add('hidden');
+        }
+      }
+    };
+
+    const DriveStorage = {
+      mode: 'virtual',
+      clientId: '',
+      apiKey: '',
+      accessToken: null,
+      tokenClient: null,
+
+      virtualFS: [
+        { id: 'f-1', name: 'Cloud Documents', type: 'folder', parent: 'root', size: '--', modified: '2026-09-18' },
+        { id: 'f-2', name: 'Installed Apps', type: 'folder', parent: 'root', size: '--', modified: '2026-09-18' },
+        { id: 'f-3', name: 'Scanned Documents', type: 'folder', parent: 'root', size: '--', modified: '2026-09-19' },
+        { id: 'd-1', name: 'Welcome_To_CloudOS.txt', type: 'text/plain', parent: 'root', size: '1.4 KB', content: `Welcome to CloudOS (Single File Web Operating System)!\n===================================================\n\n• Fully installable PWA with offline Service Worker.\n• Floatable/resizable Virtual Keyboard with symbols & auto-dismiss.\n• Session persists across page refreshes.\n• Enhanced Browser with Back, Forward, Refresh, and Bookmarks.\n• Email Client, WhatsApp Web, Scanner, To-Do, Alarm, and Control Panel.\n` },
+        { id: 'd-2', name: 'Project_Metrics.csv', type: 'text/csv', parent: 'root', size: '0.8 KB', content: `Month,Users,Storage_GB,Sync_Status\nJan,1200,45.2,OK\nFeb,1580,59.1,OK\nMar,2100,78.4,OK\nApr,2900,94.0,OK` }
+      ],
+
+      init() {
+        this.updateBadge();
+      },
+
+      updateBadge() {
+        const text = document.getElementById('tray-cloud-text');
+        const icon = document.getElementById('tray-cloud-icon');
+        if (this.mode === 'gdrive' && this.accessToken) {
+          text.textContent = 'Drive: Live';
+          text.className = 'hidden lg:inline text-[11px] font-medium text-emerald-300';
+          icon.className = 'w-4 h-4 text-emerald-400';
+        } else {
+          text.textContent = 'Drive: Virtual RAM';
+          text.className = 'hidden lg:inline text-[11px] font-medium text-amber-300';
+          icon.className = 'w-4 h-4 text-amber-400';
+        }
+      },
+
+      skipOnboarding() {
+        document.getElementById('drive-onboarding-modal').classList.add('hidden');
+        Notifications.show('Virtual Storage', 'Using Ephemeral In-Memory Cloud mode.', 'info');
+      },
+
+      async saveOnboardingSettings() {
+        const cid = document.getElementById('onboard-client-id').value.trim();
+        const akey = document.getElementById('onboard-api-key').value.trim();
+        if (!cid || !akey) {
+          Notifications.show('Missing Info', 'Please enter both Client ID and API Key.', 'warn');
+          return;
+        }
+
+        document.getElementById('drive-onboarding-modal').classList.add('hidden');
+        if (AuthEngine.currentUser) {
+          AuthEngine.currentUser.driveClientId = cid;
+          AuthEngine.currentUser.driveApiKey = akey;
+          AuthEngine.saveSession(AuthEngine.currentUser);
+          await AuthEngine.callBackend('saveDriveSettings', {
+            username: AuthEngine.currentUser.username,
+            clientId: cid,
+            apiKey: akey
+          });
+          Notifications.show('Drive Settings Saved', 'Configured in Admin Sheet.', 'success');
+        }
+        this.connectWithCredentials(cid, akey);
+      },
+
+      connectWithCredentials(clientId, apiKey) {
+        if (!clientId || !apiKey) return;
+        this.clientId = clientId;
+        this.apiKey = apiKey;
+
+        try {
+          if (!window.google || !google.accounts) {
+            console.warn('Google Identity Services library still loading...');
+            return;
+          }
+
+          this.tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: this.clientId,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            callback: (resp) => {
+              if (resp && resp.access_token) {
+                this.accessToken = resp.access_token;
+                this.mode = 'gdrive';
+                this.updateBadge();
+                Notifications.show('Drive Connected', 'Connected to personal Google Drive storage!', 'success');
+                DriveExplorer.refresh();
+              }
+            }
+          });
+
+          this.tokenClient.requestAccessToken({ prompt: '' });
+        } catch (e) {
+          console.error(e);
+        }
+      },
+
+      disconnectDrive() {
+        this.accessToken = null;
+        this.mode = 'virtual';
+        this.updateBadge();
+      },
+
+      async listFiles(folderId = 'root') {
+        if (this.mode === 'gdrive' && this.accessToken) {
+          try {
+            const query = `'${folderId}' in parents and trashed = false`;
+            const fields = 'files(id, name, mimeType, size, modifiedTime)';
+            const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&key=${this.apiKey}`;
+            const res = await fetch(url, { headers: { Authorization: `Bearer ${this.accessToken}` } });
+            const data = await res.json();
+            return (data.files || []).map(f => ({
+              id: f.id,
+              name: f.name,
+              type: f.mimeType === 'application/vnd.google-apps.folder' ? 'folder' : f.mimeType,
+              parent: folderId,
+              size: f.size ? `${(f.size / 1024).toFixed(1)} KB` : '--'
+            }));
+          } catch (err) {
+            console.error(err);
+            return [];
+          }
+        } else {
+          return this.virtualFS.filter(f => f.parent === folderId);
+        }
+      },
+
+      async readFile(fileId) {
+        if (this.mode === 'gdrive' && this.accessToken) {
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+          });
+          return await res.text();
+        } else {
+          const file = this.virtualFS.find(f => f.id === fileId);
+          return file ? (file.content || '') : '';
+        }
+      },
+
+      async writeFile(name, content, fileId = null, parentId = 'root') {
+        if (this.mode === 'gdrive' && this.accessToken) {
+          try {
+            if (fileId) {
+              await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'text/plain' },
+                body: content
+              });
+            } else {
+              const metadata = { name: name, parents: [parentId === 'root' ? 'root' : parentId] };
+              const boundary = 'foo_bar_baz_789';
+              const body = `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: text/plain\r\n\r\n${content}\r\n--${boundary}--`;
+              
+              await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+                body: body
+              });
+            }
+            Notifications.show('Drive Sync', `${name} saved to Google Drive`, 'success');
+            DriveExplorer.refresh();
+            return true;
+          } catch (e) {
+            Notifications.show('Drive Write Error', e.message, 'error');
+            return false;
+          }
+        } else {
+          if (fileId) {
+            const f = this.virtualFS.find(x => x.id === fileId);
+            if (f) f.content = content;
+          } else {
+            this.virtualFS.push({
+              id: 'file_' + Date.now(),
+              name: name,
+              type: name.endsWith('.csv') ? 'text/csv' : (name.endsWith('.html') ? 'text/html' : 'text/plain'),
+              parent: parentId,
+              size: `${(new Blob([content]).size / 1024).toFixed(1)} KB`,
+              content: content
+            });
+          }
+          Notifications.show('Saved', `${name} stored in Cloud RAM`, 'success');
+          DriveExplorer.refresh();
+          return true;
+        }
+      },
+
+      async createFolder(name, parentId = 'root') {
+        if (this.mode === 'gdrive' && this.accessToken) {
+          await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${this.accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+          });
+        } else {
+          this.virtualFS.push({ id: 'f_' + Date.now(), name: name, type: 'folder', parent: parentId, size: '--' });
+        }
+        Notifications.show('Folder Created', name, 'success');
+        DriveExplorer.refresh();
+      },
+
+      async deleteItem(id, name) {
+        SystemDialog.show({
+          title: 'Delete from Cloud Storage',
+          message: `Permanently delete "${name}"?`,
+          onConfirm: async () => {
+            if (DriveStorage.mode === 'gdrive' && DriveStorage.accessToken) {
+              await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${DriveStorage.accessToken}` }
+              });
+            } else {
+              DriveStorage.virtualFS = DriveStorage.virtualFS.filter(f => f.id !== id && f.parent !== id);
+            }
+            Notifications.show('Deleted', `${name} removed.`, 'info');
+            DriveExplorer.refresh();
+          }
+        });
+      },
+
+      triggerFileUpload() {
+        document.getElementById('global-cloud-file-input').click();
+      },
+
+      async handleNativeFileInput(e) {
+        const files = Array.from(e.target.files);
+        for (const f of files) {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const content = event.target.result;
+            await DriveStorage.writeFile(f.name, content, null, DriveExplorer.currentFolder);
+          };
+          reader.readAsText(f);
+        }
+        e.target.value = '';
+      },
+
+      createNewItemPrompt(type) {
+        SystemDialog.show({
+          title: type === 'folder' ? 'New Cloud Folder' : 'New Document',
+          message: `Enter name for the new ${type}:`,
+          prompt: true,
+          defaultValue: type === 'folder' ? 'New Folder' : 'Document.txt',
+          onConfirm: (val) => {
+            if (!val) return;
+            if (type === 'folder') this.createFolder(val, DriveExplorer.currentFolder);
+            else this.writeFile(val, '# CloudOS Note\n', null, DriveExplorer.currentFolder);
+          }
+        });
+      }
+    };
+
+    const CustomAppEngine = {
+      installedApps: [],
+
+      init() {
+        this.refreshDesktopIcons();
+      },
+
+      installApp({ name, icon = 'code', code, description = 'Custom App' }) {
+        const appId = 'custom_' + Date.now();
+        const newApp = { id: appId, name, icon, code, description };
+        this.installedApps.push(newApp);
+
+        DriveStorage.writeFile(`${name}.app.html`, code, null, 'root');
+
+        if (AuthEngine.currentUser) {
+          AuthEngine.currentUser.installedApps = this.installedApps;
+          AuthEngine.saveSession(AuthEngine.currentUser);
+          AuthEngine.callBackend('saveDriveSettings', {
+            username: AuthEngine.currentUser.username,
+            installedAppsJSON: JSON.stringify(this.installedApps)
+          });
+        }
+
+        this.refreshDesktopIcons();
+        Notifications.show('App Installed', `"${name}" added to desktop and Drive!`, 'success');
+      },
+
+      uninstallApp(appId) {
+        this.installedApps = this.installedApps.filter(a => a.id !== appId);
+        if (AuthEngine.currentUser) {
+          AuthEngine.currentUser.installedApps = this.installedApps;
+          AuthEngine.saveSession(AuthEngine.currentUser);
+          AuthEngine.callBackend('saveDriveSettings', {
+            username: AuthEngine.currentUser.username,
+            installedAppsJSON: JSON.stringify(this.installedApps)
+          });
+        }
+        this.refreshDesktopIcons();
+        Notifications.show('App Removed', 'Application uninstalled.', 'info');
+      },
+
+      refreshDesktopIcons() {
+        Desktop.renderDesktopIcons();
+        Desktop.renderStartApps();
+      },
+
+      launch(app) {
+        WindowManager.create({
+          id: app.id,
+          title: app.name,
+          icon: app.icon || 'code',
+          width: 620,
+          height: 480,
+          contentHtml: `
+            <div class="h-8 bg-white/5 border-b border-white/10 px-3 flex items-center justify-between text-xs">
+              <span class="text-slate-300 font-medium truncate">${app.name} (Sandboxed App)</span>
+              <button onclick="CustomAppEngine.uninstallApp('${app.id}'); WindowManager.close('${app.id}')" class="text-red-400 hover:text-red-300 text-[11px]">Uninstall</button>
+            </div>
+            <iframe id="iframe-${app.id}" class="w-full flex-1 bg-slate-900 border-none" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+          `,
+          onInit: (el) => {
+            const iframe = el.querySelector(`#iframe-${app.id}`);
+            if (iframe) {
+              iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;color:#f8fafc;background:#0f172a;font-family:system-ui,-apple-system,sans-serif;}</style></head><body>${app.code}</body></html>`;
+            }
+          }
+        });
+      }
+    };
+
+    const WindowManager = {
+      windows: {},
+      topZ: 100,
+
+      create({ id, title, icon = 'app-window', width = 640, height = 450, contentHtml, onInit }) {
+        if (this.windows[id]) {
+          this.focus(id);
+          this.restore(id);
+          return;
+        }
+
+        const isMobile = window.innerWidth < 768;
+        const winEl = document.createElement('div');
+        winEl.id = `win-${id}`;
+        winEl.className = `window-instance pointer-events-auto absolute acrylic rounded-3xl shadow-2xl border border-white/20 flex flex-col overflow-hidden transition-opacity duration-150 ${isMobile ? 'mobile-fullscreen' : ''}`;
+        
+        const screenW = window.innerWidth;
+        const screenH = window.innerHeight - 48;
+        const left = isMobile ? 0 : Math.max(10, Math.floor((screenW - width) / 2 + (Object.keys(this.windows).length * 15)));
+        const top = isMobile ? 0 : Math.max(10, Math.floor((screenH - height) / 2 + (Object.keys(this.windows).length * 15)));
+
+        if (!isMobile) {
+          winEl.style.width = `${width}px`;
+          winEl.style.height = `${height}px`;
+          winEl.style.left = `${left}px`;
+          winEl.style.top = `${top}px`;
+        }
+        winEl.style.zIndex = ++this.topZ;
+
+        winEl.innerHTML = `
+          <div class="window-titlebar h-10 bg-white/5 border-b border-white/10 flex items-center justify-between px-3 select-none cursor-move touch-none">
+            <div class="flex items-center space-x-2 text-xs font-medium text-white truncate pointer-events-none">
+              <i data-lucide="${icon}" class="w-4 h-4 text-indigo-400"></i>
+              <span class="truncate">${title}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button class="win-min-btn w-3 h-3 rounded-full bg-amber-400/80 hover:bg-amber-400 flex items-center justify-center text-black transition"></button>
+              <button class="win-max-btn w-3 h-3 rounded-full bg-emerald-400/80 hover:bg-emerald-400 flex items-center justify-center text-black transition"></button>
+              <button class="win-close-btn w-3 h-3 rounded-full bg-red-400/80 hover:bg-red-400 flex items-center justify-center text-black transition"></button>
+            </div>
+          </div>
+          <div class="window-content flex-1 overflow-hidden relative flex flex-col bg-slate-950/40">
+            ${contentHtml}
+          </div>
+          <div class="resize-handle resize-right ${isMobile ? 'hidden' : ''}"></div>
+          <div class="resize-handle resize-bottom ${isMobile ? 'hidden' : ''}"></div>
+          <div class="resize-handle resize-corner ${isMobile ? 'hidden' : ''}"></div>
+        `;
+
+        document.getElementById('windows-container').appendChild(winEl);
+        lucide.createIcons();
+
+        const winData = { id, element: winEl, title, icon, isMaximized: isMobile, isMinimized: false, bounds: { left, top, width, height } };
+        this.windows[id] = winData;
+        this.bindEvents(winData);
+        this.addTaskbarItem(winData);
+        this.focus(id);
+        SoundEngine.open();
+
+        if (onInit) onInit(winEl);
+      },
+
+      bindEvents(win) {
+        const el = win.element;
+        const titlebar = el.querySelector('.window-titlebar');
+        const minBtn = el.querySelector('.win-min-btn');
+        const maxBtn = el.querySelector('.win-max-btn');
+        const closeBtn = el.querySelector('.win-close-btn');
+
+        el.addEventListener('pointerdown', () => this.focus(win.id));
+
+        let isDragging = false, startX, startY, origLeft, origTop;
+
+        const onDragStart = (e) => {
+          if (e.target.closest('button') || win.isMaximized || window.innerWidth < 768) return;
+          isDragging = true;
+          const pt = e.touches ? e.touches[0] : e;
+          startX = pt.clientX;
+          startY = pt.clientY;
+          origLeft = el.offsetLeft;
+          origTop = el.offsetTop;
+        };
+
+        const onDragMove = (e) => {
+          if (!isDragging) return;
+          const pt = e.touches ? e.touches[0] : e;
+          el.style.left = `${Math.max(0, origLeft + (pt.clientX - startX))}px`;
+          el.style.top = `${Math.max(0, origTop + (pt.clientY - startY))}px`;
+        };
+
+        const onDragEnd = () => { isDragging = false; };
+
+        titlebar.addEventListener('mousedown', onDragStart);
+        titlebar.addEventListener('touchstart', onDragStart, { passive: true });
+        window.addEventListener('mousemove', onDragMove);
+        window.addEventListener('touchmove', onDragMove, { passive: true });
+        window.addEventListener('mouseup', onDragEnd);
+        window.addEventListener('touchend', onDragEnd);
+
+        titlebar.addEventListener('dblclick', () => this.toggleMaximize(win.id));
+        minBtn.onclick = () => this.minimize(win.id);
+        maxBtn.onclick = () => this.toggleMaximize(win.id);
+        closeBtn.onclick = () => this.close(win.id);
+
+        const setupResize = (selector, resizeW, resizeH) => {
+          const handle = el.querySelector(selector);
+          if (!handle) return;
+          let isResizing = false, sw, sh, mx, my;
+
+          const startR = (e) => {
+            isResizing = true;
+            const pt = e.touches ? e.touches[0] : e;
+            sw = el.offsetWidth;
+            sh = el.offsetHeight;
+            mx = pt.clientX;
+            my = pt.clientY;
+            e.stopPropagation();
+          };
+          const moveR = (e) => {
+            if (!isResizing) return;
+            const pt = e.touches ? e.touches[0] : e;
+            if (resizeW) el.style.width = `${Math.max(300, sw + (pt.clientX - mx))}px`;
+            if (resizeH) el.style.height = `${Math.max(200, sh + (pt.clientY - my))}px`;
+          };
+          const endR = () => { isResizing = false; };
+
+          handle.addEventListener('mousedown', startR);
+          handle.addEventListener('touchstart', startR, { passive: true });
+          window.addEventListener('mousemove', moveR);
+          window.addEventListener('touchmove', moveR, { passive: true });
+          window.addEventListener('mouseup', endR);
+          window.addEventListener('touchend', endR);
+        };
+
+        setupResize('.resize-corner', true, true);
+        setupResize('.resize-right', true, false);
+        setupResize('.resize-bottom', false, true);
+      },
+
+      focus(id) {
+        const win = this.windows[id];
+        if (!win) return;
+        win.element.style.zIndex = ++this.topZ;
+        document.querySelectorAll('.taskbar-app-item').forEach(b => b.classList.remove('bg-white/20', 'border-indigo-400/50'));
+        const btn = document.getElementById(`task-btn-${id}`);
+        if (btn) btn.classList.add('bg-white/20', 'border-indigo-400/50');
+      },
+
+      toggleMaximize(id) {
+        const win = this.windows[id];
+        if (!win) return;
+        const el = win.element;
+        if (!win.isMaximized) {
+          win.bounds = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight };
+          el.style.left = '0px';
+          el.style.top = '0px';
+          el.style.width = '100vw';
+          el.style.height = 'calc(100vh - 48px)';
+          el.classList.add('rounded-none');
+          win.isMaximized = true;
+        } else {
+          el.style.left = `${win.bounds.left}px`;
+          el.style.top = `${win.bounds.top}px`;
+          el.style.width = `${win.bounds.width}px`;
+          el.style.height = `${win.bounds.height}px`;
+          el.classList.remove('rounded-none');
+          win.isMaximized = false;
+        }
+      },
+
+      minimize(id) {
+        const win = this.windows[id];
+        if (win) {
+          win.element.classList.add('hidden');
+          win.isMinimized = true;
+        }
+      },
+
+      restore(id) {
+        const win = this.windows[id];
+        if (win) {
+          win.element.classList.remove('hidden');
+          win.isMinimized = false;
+          this.focus(id);
+        }
+      },
+
+      close(id) {
+        const win = this.windows[id];
+        if (win) {
+          win.element.remove();
+          delete this.windows[id];
+          const btn = document.getElementById(`task-btn-${id}`);
+          if (btn) btn.remove();
+          SoundEngine.click();
+        }
+      },
+
+      minimizeAll() {
+        Object.keys(this.windows).forEach(id => this.minimize(id));
+      },
+
+      addTaskbarItem(win) {
+        const container = document.getElementById('taskbar-apps');
+        const btn = document.createElement('button');
+        btn.id = `task-btn-${win.id}`;
+        btn.className = 'taskbar-app-item flex items-center space-x-1.5 px-2.5 sm:px-3 h-8 sm:h-9 rounded-xl hover:bg-white/10 border border-white/5 transition text-xs text-white';
+        btn.innerHTML = `<i data-lucide="${win.icon}" class="w-4 h-4 text-indigo-400"></i><span class="truncate max-w-[80px] hidden md:inline">${win.title}</span>`;
+        btn.onclick = () => {
+          if (win.isMinimized) this.restore(win.id);
+          else this.focus(win.id);
+        };
+        container.appendChild(btn);
+        lucide.createIcons();
+      }
+    };
+
+    /* APPLICATIONS REGISTRY */
+    const AppManager = {
+      apps: {
+        explorer: { title: 'Drive Explorer', icon: 'folder', launch: (p) => DriveExplorer.open(p) },
+        installer: { title: 'App Installer', icon: 'package-plus', launch: (p) => AppInstallerApp.open(p) },
+        browser: { title: 'Web Browser', icon: 'globe', launch: (p) => WebBrowserApp.open(p) },
+        email: { title: 'Cloud Mail', icon: 'mail', launch: (p) => EmailApp.open(p) },
+        whatsapp: { title: 'WhatsApp Web', icon: 'message-circle', launch: (p) => WhatsAppApp.open(p) },
+        scanner: { title: 'PDF Scanner', icon: 'camera', launch: (p) => ScannerApp.open(p) },
+        docviewer: { title: 'Doc Viewer', icon: 'file-search', launch: (p) => DocViewerApp.open(p) },
+        todo: { title: 'To-Do Tasks', icon: 'check-square', launch: (p) => TodoApp.open(p) },
+        alarm: { title: 'Alarm & Timer', icon: 'clock', launch: (p) => AlarmTimerApp.open(p) },
+        calendar: { title: 'Calendar', icon: 'calendar', launch: (p) => CalendarFullApp.open(p) },
+        control: { title: 'Control Panel', icon: 'sliders-horizontal', launch: (p) => ControlPanelApp.open(p) },
+        editor: { title: 'Cloud Editor', icon: 'file-text', launch: (p) => CloudEditorApp.open(p) },
+        terminal: { title: 'Cloud Shell', icon: 'terminal', launch: (p) => CloudTerminalApp.open(p) },
+        calculator: { title: 'Calculator', icon: 'calculator', launch: (p) => CalculatorApp.open(p) },
+        taskmgr: { title: 'Task Manager', icon: 'activity', launch: (p) => TaskManagerApp.open(p) },
+        settings: { title: 'Settings', icon: 'settings', launch: (p) => SettingsApp.open(p) }
+      },
+
+      launch(appId, params = {}) {
+        Desktop.closeStartMenu();
+        if (this.apps[appId]) this.apps[appId].launch(params);
+        else {
+          const custom = CustomAppEngine.installedApps.find(a => a.id === appId);
+          if (custom) CustomAppEngine.launch(custom);
+        }
+      }
+    };
+
+    /* 1. DRIVE EXPLORER */
+    const DriveExplorer = {
+      currentFolder: 'root',
+      open() {
+        WindowManager.create({
+          id: 'explorer',
+          title: 'Google Drive Explorer',
+          icon: 'folder',
+          width: 720,
+          height: 480,
+          contentHtml: `
+            <div class="h-11 bg-white/5 border-b border-white/10 flex items-center justify-between px-3 text-xs gap-2">
+              <div class="flex items-center space-x-1">
+                <button onclick="DriveExplorer.refresh()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-300"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+              </div>
+              <div class="flex-1 px-3 py-1 bg-black/40 rounded-xl border border-white/10 text-slate-300 font-mono text-[11px] truncate">
+                drive://root/${DriveExplorer.currentFolder}
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <button onclick="DriveStorage.createNewItemPrompt('folder')" class="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-white"><i data-lucide="folder-plus" class="w-3.5 h-3.5 inline mr-1"></i>New</button>
+                <button onclick="DriveStorage.triggerFileUpload()" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-medium"><i data-lucide="upload" class="w-3.5 h-3.5 inline mr-1"></i>Upload</button>
+              </div>
+            </div>
+            <div id="explorer-grid" class="flex-1 p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 content-start"></div>
+          `,
+          onInit: () => DriveExplorer.refresh()
+        });
+      },
+      async refresh() {
+        const grid = document.getElementById('explorer-grid');
+        if (!grid) return;
+        grid.innerHTML = '<div class="col-span-full py-10 text-center text-slate-400"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-400"></i>Scanning Drive...</div>';
+        lucide.createIcons();
+
+        const items = await DriveStorage.listFiles(this.currentFolder);
+        grid.innerHTML = '';
+        if (!items.length) {
+          grid.innerHTML = '<div class="col-span-full py-12 text-center text-slate-400"><i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>Empty directory.</div>';
+          lucide.createIcons();
+          return;
+        }
+
+        items.forEach(it => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'p-3 rounded-2xl bg-white/5 hover:bg-white/15 cursor-pointer border border-white/5 hover:border-white/20 flex flex-col items-center text-center transition group relative';
+          
+          let icon = it.type === 'folder' ? 'folder' : (it.name.endsWith('.csv') ? 'table' : (it.name.endsWith('.pdf') ? 'file-text' : 'file-text'));
+          let color = it.type === 'folder' ? 'text-amber-400' : (it.name.endsWith('.csv') ? 'text-emerald-400' : 'text-blue-400');
+
+          itemDiv.innerHTML = `
+            <i data-lucide="${icon}" class="w-8 h-8 ${color} mb-1.5 group-hover:scale-110 transition"></i>
+            <span class="text-xs font-medium text-white truncate w-full">${it.name}</span>
+            <span class="text-[10px] text-slate-400 mt-0.5">${it.size}</span>
+            <button onclick="event.stopPropagation(); DriveStorage.deleteItem('${it.id}', '${it.name}')" class="absolute top-1.5 right-1.5 p-1 text-slate-500 hover:text-red-400"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
+          `;
+
+          itemDiv.onclick = () => {
+            if (it.type === 'folder') {
+              DriveExplorer.currentFolder = it.id;
+              DriveExplorer.refresh();
+            } else {
+              AppManager.launch('docviewer', { fileId: it.id, fileName: it.name });
+            }
+          };
+          grid.appendChild(itemDiv);
+        });
+        lucide.createIcons();
+      }
+    };
+
+    /* 2. UPGRADED WEB BROWSER WITH BACK, FORWARD, REFRESH & BOOKMARKS */
+    const WebBrowserApp = {
+      history: ['https://en.wikipedia.org'],
+      historyIndex: 0,
+      bookmarks: [
+        { name: 'Wikipedia', url: 'https://en.wikipedia.org' },
+        { name: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
+        { name: 'GitHub', url: 'https://github.com' },
+        { name: 'Bing', url: 'https://www.bing.com' }
+      ],
+
+      open() {
+        WindowManager.create({
+          id: 'browser',
+          title: 'Web Browser',
+          icon: 'globe',
+          width: 740,
+          height: 490,
+          contentHtml: `
+            <div class="bg-white/5 border-b border-white/10 p-2 flex flex-col space-y-1.5 text-xs">
+              <div class="flex items-center space-x-1.5">
+                <button onclick="WebBrowserApp.goBack()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-300" title="Back"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <button onclick="WebBrowserApp.goForward()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-300" title="Forward"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+                <button onclick="WebBrowserApp.reload()" class="p-1.5 hover:bg-white/10 rounded-lg text-slate-300" title="Refresh"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
+                <div class="flex-1 relative">
+                  <input type="text" id="browser-address" value="https://en.wikipedia.org" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono" onkeydown="if(event.key==='Enter') WebBrowserApp.navigate(this.value)">
+                </div>
+                <button onclick="WebBrowserApp.toggleBookmark()" class="p-1.5 hover:bg-white/10 rounded-lg text-amber-400" title="Bookmark"><i data-lucide="bookmark" class="w-4 h-4"></i></button>
+                <button onclick="WebBrowserApp.navigate(document.getElementById('browser-address').value)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-medium">Go</button>
+              </div>
+              <div id="browser-bookmarks-bar" class="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5 text-[11px] text-slate-300">
+                <!-- Bookmarks injected -->
+              </div>
+            </div>
+            <div class="flex-1 relative bg-white">
+              <iframe id="browser-frame" src="https://en.wikipedia.org" class="w-full h-full border-none" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            </div>
+          `,
+          onInit: () => WebBrowserApp.renderBookmarks()
+        });
+      },
+
+      renderBookmarks() {
+        const bar = document.getElementById('browser-bookmarks-bar');
+        if (!bar) return;
+        bar.innerHTML = this.bookmarks.map(b => `
+          <button onclick="WebBrowserApp.navigate('${b.url}')" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 flex items-center space-x-1 whitespace-nowrap">
+            <i data-lucide="globe" class="w-3 h-3 text-indigo-400"></i>
+            <span>${b.name}</span>
+          </button>
+        `).join('');
+        lucide.createIcons();
+      },
+
+      navigate(url) {
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          url = 'https://' + url;
+        }
+        document.getElementById('browser-address').value = url;
+        document.getElementById('browser-frame').src = url;
+        this.history.push(url);
+        this.historyIndex = this.history.length - 1;
+      },
+
+      goBack() {
+        if (this.historyIndex > 0) {
+          this.historyIndex--;
+          const url = this.history[this.historyIndex];
+          document.getElementById('browser-address').value = url;
+          document.getElementById('browser-frame').src = url;
+        }
+      },
+
+      goForward() {
+        if (this.historyIndex < this.history.length - 1) {
+          this.historyIndex++;
+          const url = this.history[this.historyIndex];
+          document.getElementById('browser-address').value = url;
+          document.getElementById('browser-frame').src = url;
+        }
+      },
+
+      reload() {
+        const frame = document.getElementById('browser-frame');
+        if (frame) frame.src = frame.src;
+      },
+
+      toggleBookmark() {
+        const url = document.getElementById('browser-address').value;
+        const exists = this.bookmarks.find(b => b.url === url);
+        if (!exists) {
+          this.bookmarks.push({ name: new URL(url).hostname.replace('www.', ''), url: url });
+          this.renderBookmarks();
+          Notifications.show('Browser', 'Bookmarked current page!', 'success');
+        } else {
+          Notifications.show('Browser', 'Already bookmarked.', 'info');
+        }
+      }
+    };
+
+    /* 3. EMAIL CLIENT */
+    const EmailApp = {
+      emails: [
+        { id: 1, sender: 'admin@cloudos.internal', subject: 'Welcome to CloudOS Mail System', date: '10:45 AM', body: 'Hello and welcome to CloudOS! Your cloud storage and Apps Script backend synchronization are fully operational.' },
+        { id: 2, sender: 'security@cloudos.internal', subject: 'Session Protection Enabled', date: 'Yesterday', body: 'Your session token is now persisted across browser reloads. You will remain signed in securely until you click Sign Out.' }
+      ],
+      open() {
+        WindowManager.create({
+          id: 'email',
+          title: 'Cloud Mail',
+          icon: 'mail',
+          width: 700,
+          height: 480,
+          contentHtml: `
+            <div class="flex h-full text-xs">
+              <div class="w-48 bg-white/5 border-r border-white/10 p-2 flex flex-col space-y-1">
+                <button onclick="EmailApp.compose()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-medium mb-2 flex items-center justify-center space-x-1.5">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  <span>Compose</span>
+                </button>
+                <button class="w-full text-left px-3 py-1.5 rounded-lg bg-white/10 text-white flex items-center space-x-2">
+                  <i data-lucide="inbox" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  <span>Inbox (${EmailApp.emails.length})</span>
+                </button>
+                <button class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-white/5 text-slate-400 flex items-center space-x-2">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                  <span>Sent</span>
+                </button>
+              </div>
+              <div class="w-56 border-r border-white/10 overflow-y-auto divide-y divide-white/5 bg-black/20" id="email-inbox-list">
+                ${EmailApp.emails.map(m => `
+                  <div onclick="EmailApp.view(${m.id})" class="p-3 cursor-pointer hover:bg-white/10 transition">
+                    <div class="font-semibold text-white truncate">${m.sender}</div>
+                    <div class="text-[11px] text-indigo-300 truncate">${m.subject}</div>
+                    <div class="text-[10px] text-slate-500 mt-1">${m.date}</div>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="flex-1 p-4 overflow-y-auto flex flex-col" id="email-view-body">
+                <div class="text-slate-400 text-center my-auto"><i data-lucide="mail-open" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>Select an email to read</div>
+              </div>
+            </div>
+          `
+        });
+      },
+      view(id) {
+        const m = this.emails.find(e => e.id === id);
+        if (!m) return;
+        document.getElementById('email-view-body').innerHTML = `
+          <div class="border-b border-white/10 pb-3 mb-3">
+            <h3 class="text-sm font-bold text-white mb-1">${m.subject}</h3>
+            <div class="text-[11px] text-slate-400">From: <span class="text-slate-200">${m.sender}</span></div>
+          </div>
+          <p class="text-slate-300 leading-relaxed text-xs whitespace-pre-line">${m.body}</p>
+        `;
+      },
+      compose() {
+        document.getElementById('email-view-body').innerHTML = `
+          <div class="space-y-2 h-full flex flex-col">
+            <h4 class="font-semibold text-white">New Message</h4>
+            <input type="email" id="mail-to" placeholder="To: recipient@domain.com" class="bg-black/40 border border-white/15 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none">
+            <input type="text" id="mail-sub" placeholder="Subject" class="bg-black/40 border border-white/15 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none">
+            <textarea id="mail-msg" placeholder="Write your message..." class="flex-1 bg-black/40 border border-white/15 rounded-xl p-3 text-white text-xs focus:outline-none resize-none"></textarea>
+            <div class="flex justify-end space-x-2">
+              <button onclick="EmailApp.sendMail()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-medium">Send Email</button>
+            </div>
+          </div>
+        `;
+      },
+      sendMail() {
+        const to = document.getElementById('mail-to').value.trim();
+        const sub = document.getElementById('mail-sub').value.trim();
+        const msg = document.getElementById('mail-msg').value;
+        if (!to || !sub) {
+          Notifications.show('Email Error', 'Recipient and subject required.', 'warn');
+          return;
+        }
+        Notifications.show('Mail Dispatched', `Message sent to ${to}`, 'success');
+        this.emails.unshift({ id: Date.now(), sender: to, subject: `Sent: ${sub}`, date: 'Just now', body: msg });
+        this.open();
+      }
+    };
+
+    /* 4. WHATSAPP WEB LAUNCHER */
+    const WhatsAppApp = {
+      open() {
+        WindowManager.create({
+          id: 'whatsapp',
+          title: 'WhatsApp Web',
+          icon: 'message-circle',
+          width: 540,
+          height: 480,
+          contentHtml: `
+            <div class="flex flex-col h-full items-center justify-center p-6 text-center text-xs space-y-4">
+              <div class="w-16 h-16 rounded-3xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <i data-lucide="message-circle" class="w-9 h-9"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white mb-1">WhatsApp Web Connect</h3>
+                <p class="text-slate-400 max-w-sm text-[11px] leading-relaxed">Launch WhatsApp Web in an independent window or direct message any phone number worldwide without adding to contacts.</p>
+              </div>
+              <div class="w-full max-w-xs space-y-2">
+                <input type="text" id="wa-phone" placeholder="Phone Number with Country Code (e.g. 15551234567)" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none text-center font-mono">
+                <input type="text" id="wa-text" placeholder="Optional pre-filled message" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none text-center">
+                <button onclick="WhatsAppApp.launchDirectChat()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold shadow-lg transition">Start Direct WhatsApp Chat</button>
+              </div>
+              <div class="pt-2 border-t border-white/10 w-full max-w-xs">
+                <a href="https://web.whatsapp.com" target="_blank" class="text-indigo-400 hover:underline inline-flex items-center space-x-1">
+                  <span>Open Full web.whatsapp.com</span>
+                  <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                </a>
+              </div>
+            </div>
+          `
+        });
+      },
+      launchDirectChat() {
+        const phone = document.getElementById('wa-phone').value.replace(/[^0-9]/g, '');
+        const text = encodeURIComponent(document.getElementById('wa-text').value.trim());
+        if (!phone) {
+          Notifications.show('WhatsApp', 'Please enter a valid phone number with country code.', 'warn');
+          return;
+        }
+        window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+      }
+    };
+
+    /* 5. PDF & CAMERA DOCUMENT SCANNER */
+    const ScannerApp = {
+      stream: null,
+      open() {
+        WindowManager.create({
+          id: 'scanner',
+          title: 'Document & PDF Scanner',
+          icon: 'camera',
+          width: 600,
+          height: 480,
+          contentHtml: `
+            <div class="flex flex-col h-full p-3 text-xs space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-300 font-medium">Camera Feed & Scan Filter</span>
+                <div class="flex space-x-1.5">
+                  <button onclick="ScannerApp.startCamera()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-medium">Start Camera</button>
+                  <button onclick="ScannerApp.capture()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium">Capture & Scan</button>
+                </div>
+              </div>
+              <div class="flex-1 relative bg-black rounded-2xl overflow-hidden flex items-center justify-center border border-white/10">
+                <video id="scanner-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="scanner-canvas" class="hidden"></canvas>
+              </div>
+              <div class="flex justify-between items-center pt-1">
+                <span class="text-[11px] text-slate-400">Captured scans automatically sync to your Google Drive / Scanned Documents.</span>
+                <button onclick="ScannerApp.saveToDrive()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl">Save Scanned Doc</button>
+              </div>
+            </div>
+          `,
+          onInit: () => ScannerApp.startCamera()
+        });
+      },
+      async startCamera() {
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          const video = document.getElementById('scanner-video');
+          if (video) video.srcObject = this.stream;
+        } catch (e) {
+          Notifications.show('Camera Error', 'Camera access blocked or not available.', 'warn');
+        }
+      },
+      capture() {
+        const video = document.getElementById('scanner-video');
+        const canvas = document.getElementById('scanner-canvas');
+        if (!video || !canvas) return;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // High-contrast B&W document scan filter
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const v = (0.2126 * d[i] + 0.7152 * d[i+1] + 0.0722 * d[i+2]) >= 128 ? 255 : 0;
+          d[i] = d[i+1] = d[i+2] = v;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        canvas.classList.remove('hidden');
+        video.classList.add('hidden');
+        Notifications.show('Scanned', 'Document captured and filtered.', 'success');
+      },
+      saveToDrive() {
+        const canvas = document.getElementById('scanner-canvas');
+        if (!canvas) return;
+        const dataUrl = canvas.toDataURL('image/png');
+        const fileName = `Scan_${Date.now()}.png`;
+        DriveStorage.writeFile(fileName, dataUrl, null, 'root');
+        Notifications.show('Saved to Cloud', `Document saved as ${fileName}`, 'success');
+      }
+    };
+
+    /* 6. ALL-FORMAT DOCUMENT VIEWER */
+    const DocViewerApp = {
+      open({ fileId = null, fileName = 'Preview.txt' } = {}) {
+        WindowManager.create({
+          id: 'docviewer',
+          title: `Document Viewer — ${fileName}`,
+          icon: 'file-search',
+          width: 680,
+          height: 480,
+          contentHtml: `
+            <div class="h-10 bg-white/5 border-b border-white/10 px-3 flex items-center justify-between text-xs">
+              <span class="font-medium text-white truncate">${fileName}</span>
+              <button onclick="AppManager.launch('editor', { fileId: '${fileId || ''}', fileName: '${fileName}' })" class="px-3 py-1 bg-indigo-600 rounded-lg text-white">Open in Editor</button>
+            </div>
+            <div id="doc-preview-area" class="flex-1 p-4 overflow-auto font-mono text-xs text-slate-200">
+              Loading document preview...
+            </div>
+          `,
+          onInit: async () => {
+            const area = document.getElementById('doc-preview-area');
+            if (fileId) {
+              const content = await DriveStorage.readFile(fileId);
+              if (fileName.endsWith('.csv')) {
+                const rows = content.split('\n').map(r => r.split(','));
+                area.innerHTML = `
+                  <table class="w-full text-left border-collapse border border-white/15">
+                    ${rows.map((row, i) => `
+                      <tr class="${i === 0 ? 'bg-indigo-950/50 font-bold text-white' : 'hover:bg-white/5'}">
+                        ${row.map(c => `<td class="border border-white/10 p-2">${c}</td>`).join('')}
+                      </tr>
+                    `).join('')}
+                  </table>
+                `;
+              } else {
+                area.innerHTML = `<pre class="whitespace-pre-wrap font-mono">${content.replace(/</g, '&lt;')}</pre>`;
+              }
+            } else {
+              area.innerHTML = '<p class="text-slate-400">No document specified. Open a file via Drive Explorer.</p>';
+            }
+          }
+        });
+      }
+    };
+
+    /* 7. TO-DO APPLICATION & DESKTOP WIDGET ENGINE */
+    const TodoEngine = {
+      tasks: [
+        { id: 1, text: 'Connect personal Google Drive', done: false },
+        { id: 2, text: 'Test Virtual Keyboard symbols', done: true },
+        { id: 3, text: 'Install custom code application', done: false }
+      ],
+      init() {
+        this.renderWidget();
+      },
+      renderWidget() {
+        const list = document.getElementById('widget-todo-list');
+        if (!list) return;
+        list.innerHTML = this.tasks.map(t => `
+          <div class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-white/5 text-[11px]">
+            <input type="checkbox" ${t.done ? 'checked' : ''} onchange="TodoEngine.toggle(${t.id})" class="rounded border-white/20 bg-black/40 text-indigo-600">
+            <span class="flex-1 truncate ${t.done ? 'line-through text-slate-500' : 'text-slate-200'}">${t.text}</span>
+            <button onclick="TodoEngine.remove(${t.id})" class="text-slate-500 hover:text-red-400"><i data-lucide="x" class="w-3 h-3"></i></button>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      },
+      toggle(id) {
+        const t = this.tasks.find(x => x.id === id);
+        if (t) t.done = !t.done;
+        this.renderWidget();
+      },
+      remove(id) {
+        this.tasks = this.tasks.filter(x => x.id !== id);
+        this.renderWidget();
+      },
+      addFromWidget() {
+        const input = document.getElementById('widget-todo-input');
+        const txt = input.value.trim();
+        if (!txt) return;
+        this.tasks.push({ id: Date.now(), text: txt, done: false });
+        input.value = '';
+        this.renderWidget();
+      }
+    };
+
+    const TodoApp = {
+      open() {
+        WindowManager.create({
+          id: 'todo',
+          title: 'To-Do Tasks',
+          icon: 'check-square',
+          width: 520,
+          height: 420,
+          contentHtml: `
+            <div class="p-4 flex flex-col h-full space-y-3 text-xs">
+              <div class="flex space-x-2">
+                <input type="text" id="todo-app-input" placeholder="What needs to be done?" class="flex-1 bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none" onkeydown="if(event.key==='Enter') TodoApp.add()">
+                <button onclick="TodoApp.add()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-semibold">Add Task</button>
+              </div>
+              <div id="todo-app-list" class="flex-1 overflow-y-auto divide-y divide-white/10 acrylic-card rounded-2xl p-2"></div>
+            </div>
+          `,
+          onInit: () => TodoApp.render()
+        });
+      },
+      render() {
+        const list = document.getElementById('todo-app-list');
+        if (!list) return;
+        list.innerHTML = TodoEngine.tasks.map(t => `
+          <div class="py-2.5 px-2 flex items-center justify-between text-slate-200 hover:bg-white/5 rounded-xl">
+            <label class="flex items-center space-x-2.5 cursor-pointer flex-1">
+              <input type="checkbox" ${t.done ? 'checked' : ''} onchange="TodoEngine.toggle(${t.id}); TodoApp.render()" class="rounded border-white/20 bg-black/40 text-indigo-600">
+              <span class="${t.done ? 'line-through text-slate-500' : 'text-white'} text-xs">${t.text}</span>
+            </label>
+            <button onclick="TodoEngine.remove(${t.id}); TodoApp.render()" class="text-slate-500 hover:text-red-400 p-1"><i data-lucide="trash" class="w-4 h-4"></i></button>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      },
+      add() {
+        const input = document.getElementById('todo-app-input');
+        const txt = input.value.trim();
+        if (!txt) return;
+        TodoEngine.tasks.push({ id: Date.now(), text: txt, done: false });
+        input.value = '';
+        TodoEngine.renderWidget();
+        this.render();
+      }
+    };
+
+    /* 8. ALARM, STOPWATCH & TIMER */
+    const AlarmTimerApp = {
+      timerSeconds: 0,
+      timerInterval: null,
+      open() {
+        WindowManager.create({
+          id: 'alarm',
+          title: 'Alarm, Timer & Stopwatch',
+          icon: 'clock',
+          width: 500,
+          height: 380,
+          contentHtml: `
+            <div class="p-4 flex flex-col h-full space-y-4 text-xs">
+              <div class="flex rounded-xl bg-black/40 p-1 border border-white/10 text-xs">
+                <button onclick="AlarmTimerApp.tab('timer')" id="at-t-timer" class="flex-1 py-1.5 rounded-lg font-medium text-white bg-indigo-600">Timer</button>
+                <button onclick="AlarmTimerApp.tab('alarm')" id="at-t-alarm" class="flex-1 py-1.5 rounded-lg font-medium text-slate-400">Alarm</button>
+              </div>
+              
+              <!-- Timer Section -->
+              <div id="at-sec-timer" class="flex-1 flex flex-col items-center justify-center space-y-4">
+                <div id="timer-display" class="text-5xl font-mono font-bold text-white tracking-widest">00:00</div>
+                <div class="flex space-x-2">
+                  <button onclick="AlarmTimerApp.startTimer(60)" class="px-3 py-1.5 rounded-xl bg-white/10 text-slate-200">+1 Min</button>
+                  <button onclick="AlarmTimerApp.startTimer(300)" class="px-3 py-1.5 rounded-xl bg-white/10 text-slate-200">+5 Min</button>
+                  <button onclick="AlarmTimerApp.resetTimer()" class="px-3 py-1.5 rounded-xl bg-red-500/20 text-red-300">Reset</button>
+                </div>
+              </div>
+
+              <!-- Alarm Section -->
+              <div id="at-sec-alarm" class="flex-1 flex flex-col items-center justify-center space-y-3 hidden">
+                <input type="time" id="alarm-time-input" class="bg-black/50 border border-white/20 rounded-2xl px-4 py-2 text-2xl font-mono text-white text-center">
+                <button onclick="AlarmTimerApp.setAlarm()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 font-semibold text-white rounded-xl">Set Alarm</button>
+              </div>
+            </div>
+          `
+        });
+      },
+      tab(t) {
+        document.getElementById('at-sec-timer').classList.toggle('hidden', t !== 'timer');
+        document.getElementById('at-sec-alarm').classList.toggle('hidden', t !== 'alarm');
+        document.getElementById('at-t-timer').className = t === 'timer' ? 'flex-1 py-1.5 rounded-lg font-medium text-white bg-indigo-600' : 'flex-1 py-1.5 rounded-lg font-medium text-slate-400';
+        document.getElementById('at-t-alarm').className = t === 'alarm' ? 'flex-1 py-1.5 rounded-lg font-medium text-white bg-indigo-600' : 'flex-1 py-1.5 rounded-lg font-medium text-slate-400';
+      },
+      startTimer(sec) {
+        this.timerSeconds += sec;
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.updateTimerDisplay();
+        this.timerInterval = setInterval(() => {
+          if (this.timerSeconds > 0) {
+            this.timerSeconds--;
+            this.updateTimerDisplay();
+          } else {
+            clearInterval(this.timerInterval);
+            SoundEngine.alarm();
+            Notifications.show('Timer Finished', 'Time is up!', 'warn');
+          }
+        }, 1000);
+      },
+      updateTimerDisplay() {
+        const m = Math.floor(this.timerSeconds / 60);
+        const s = this.timerSeconds % 60;
+        const dsp = document.getElementById('timer-display');
+        if (dsp) dsp.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      },
+      resetTimer() {
+        clearInterval(this.timerInterval);
+        this.timerSeconds = 0;
+        this.updateTimerDisplay();
+      },
+      setAlarm() {
+        const val = document.getElementById('alarm-time-input').value;
+        if (!val) return;
+        Notifications.show('Alarm Scheduled', `Alarm set for ${val}`, 'success');
+      }
+    };
+
+    /* 9. CONTROL PANEL */
+    const ControlPanelApp = {
+      open() {
+        WindowManager.create({
+          id: 'control',
+          title: 'Control Panel',
+          icon: 'sliders-horizontal',
+          width: 540,
+          height: 440,
+          contentHtml: `
+            <div class="p-4 grid grid-cols-2 gap-3 text-xs">
+              <div class="acrylic-card p-3 rounded-2xl border border-white/10 space-y-2">
+                <div class="flex items-center space-x-2 text-indigo-400 font-semibold">
+                  <i data-lucide="volume-2" class="w-4 h-4"></i>
+                  <span>System Audio Volume</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value="${SoundEngine.volume}" oninput="SoundEngine.volume = parseFloat(this.value); SoundEngine.click();" class="w-full">
+              </div>
+
+              <div class="acrylic-card p-3 rounded-2xl border border-white/10 space-y-2">
+                <div class="flex items-center space-x-2 text-amber-400 font-semibold">
+                  <i data-lucide="sun" class="w-4 h-4"></i>
+                  <span>Display Dimmer</span>
+                </div>
+                <input type="range" min="0" max="0.7" step="0.05" value="0" oninput="document.getElementById('screen-dimmer-overlay').style.opacity = this.value" class="w-full">
+              </div>
+
+              <div class="acrylic-card p-3 rounded-2xl border border-white/10 space-y-2">
+                <div class="flex items-center space-x-2 text-cyan-400 font-semibold">
+                  <i data-lucide="wifi" class="w-4 h-4"></i>
+                  <span>Network Connection</span>
+                </div>
+                <div class="text-[11px] text-emerald-400 font-semibold">Online & Synchronized</div>
+                <div class="text-[10px] text-slate-400">PWA Offline cache active</div>
+              </div>
+
+              <div class="acrylic-card p-3 rounded-2xl border border-white/10 space-y-2">
+                <div class="flex items-center space-x-2 text-purple-400 font-semibold">
+                  <i data-lucide="database" class="w-4 h-4"></i>
+                  <span>Storage Architecture</span>
+                </div>
+                <div class="text-[11px] text-white">Mode: <span class="text-amber-300 font-bold uppercase">${DriveStorage.mode}</span></div>
+                <div class="text-[10px] text-slate-400">Zero device disk footprints</div>
+              </div>
+
+              <div class="col-span-2 acrylic-card p-3 rounded-2xl border border-white/10 flex justify-between items-center">
+                <div>
+                  <h4 class="font-semibold text-white">Virtual Keyboard Layout</h4>
+                  <p class="text-[11px] text-slate-400">Symbols enabled on Shift. Resizable and draggable.</p>
+                </div>
+                <button onclick="VirtualKeyboard.toggle()" class="px-3 py-1.5 bg-indigo-600 rounded-xl text-white font-medium">Show Keyboard</button>
+              </div>
+            </div>
+          `
+        });
+      }
+    };
+
+    /* 10. FULL CALENDAR APPLICATION */
+    const CalendarFullApp = {
+      open() {
+        WindowManager.create({
+          id: 'calendar',
+          title: 'Calendar',
+          icon: 'calendar',
+          width: 580,
+          height: 440,
+          contentHtml: `
+            <div class="p-4 flex flex-col h-full text-xs">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-white">September 2026</h3>
+                <span class="text-indigo-400 font-medium">Cloud Schedule</span>
+              </div>
+              <div class="grid grid-cols-7 gap-2 text-center text-slate-400 font-semibold mb-2">
+                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+              </div>
+              <div class="flex-1 grid grid-cols-7 gap-2 text-center text-xs" id="full-cal-grid">
+                <!-- Days injected -->
+              </div>
+            </div>
+          `,
+          onInit: () => {
+            const g = document.getElementById('full-cal-grid');
+            let h = '';
+            for (let i = 0; i < 2; i++) h += '<div></div>';
+            for (let d = 1; d <= 30; d++) {
+              const isToday = d === 19;
+              h += `<div class="p-2 rounded-xl acrylic-card ${isToday ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-white/10'}">${d}</div>`;
+            }
+            g.innerHTML = h;
+          }
+        });
+      }
+    };
+
+    /* 11. CUSTOM CODE APP INSTALLER */
+    const AppInstallerApp = {
+      open() {
+        WindowManager.create({
+          id: 'installer',
+          title: 'Custom App Installer',
+          icon: 'package-plus',
+          width: 580,
+          height: 520,
+          contentHtml: `
+            <div class="p-4 overflow-y-auto space-y-4 text-xs">
+              <div class="acrylic-card p-3 rounded-2xl border border-indigo-500/20">
+                <h4 class="font-semibold text-white mb-1">Install Web Code as Native Desktop App</h4>
+                <p class="text-slate-300 leading-relaxed text-[11px]">Upload an HTML/JS file or paste complete code. CloudOS saves the application into your Google Drive, pins a shortcut to your desktop, and runs it directly in a window!</p>
+              </div>
+              <div>
+                <label class="block font-medium text-slate-300 mb-1">Application Name</label>
+                <input type="text" id="install-app-name" placeholder="e.g. My Paint Tool" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block font-medium text-slate-300 mb-1">Upload Code File (.html, .js, .txt)</label>
+                <input type="file" id="install-app-file" accept=".html,.js,.txt" onchange="AppInstallerApp.handleFileSelect(event)" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-1.5 text-slate-400 text-xs file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:bg-indigo-600 file:text-white hover:file:bg-indigo-500">
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label class="font-medium text-slate-300">Or Paste App HTML/JS Code</label>
+                  <button onclick="ClipboardSystem.pasteFromClipboard()" class="text-indigo-400 hover:underline text-[10px]">Paste from Clipboard</button>
+                </div>
+                <textarea id="install-app-code" rows="8" placeholder="<!DOCTYPE html><html><body><h1>Hello World</h1></body></html>" class="w-full bg-black/40 border border-white/15 rounded-xl p-3 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"></textarea>
+              </div>
+              <button onclick="AppInstallerApp.submitInstall()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 font-semibold text-white rounded-xl shadow-lg transition">Install App to Google Drive & Desktop</button>
+            </div>
+          `
+        });
+      },
+      handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const nameInput = document.getElementById('install-app-name');
+        if (!nameInput.value) nameInput.value = file.name.replace(/\.[^/.]+$/, '');
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          document.getElementById('install-app-code').value = ev.target.result;
+        };
+        reader.readAsText(file);
+      },
+      submitInstall() {
+        const name = document.getElementById('install-app-name').value.trim();
+        const code = document.getElementById('install-app-code').value.trim();
+        if (!name || !code) {
+          Notifications.show('Validation', 'Please provide an App Name and Code.', 'warn');
+          return;
+        }
+        CustomAppEngine.installApp({ name, code, icon: 'cpu' });
+        WindowManager.close('installer');
+      }
+    };
+
+    /* 12. CLOUD EDITOR */
+    const CloudEditorApp = {
+      open({ fileId = null, fileName = 'Notes.txt' } = {}) {
+        const id = `editor-${fileId || Date.now()}`;
+        WindowManager.create({
+          id: id,
+          title: `Editor — ${fileName}`,
+          icon: 'file-text',
+          width: 620,
+          height: 440,
+          contentHtml: `
+            <div class="h-10 bg-white/5 border-b border-white/10 flex items-center justify-between px-3 text-xs">
+              <input type="text" id="${id}-name" value="${fileName}" class="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-white text-xs w-48 focus:outline-none">
+              <div class="flex space-x-1.5">
+                <button onclick="ClipboardSystem.copyText(document.getElementById('${id}-txt').value)" class="px-2 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-slate-300 text-[11px]">Copy</button>
+                <button onclick="CloudEditorApp.save('${id}', '${fileId || ''}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-medium">Save</button>
+              </div>
+            </div>
+            <textarea id="${id}-txt" class="w-full flex-1 p-3 bg-transparent text-white font-mono text-xs focus:outline-none resize-none leading-relaxed" placeholder="Type document content..."></textarea>
+          `,
+          onInit: async (winEl) => {
+            if (fileId) {
+              const txt = winEl.querySelector(`#${id}-txt`);
+              txt.value = 'Fetching from Cloud Drive...';
+              txt.value = await DriveStorage.readFile(fileId);
+            }
+          }
+        });
+      },
+      async save(winId, fileId) {
+        const name = document.getElementById(`${winId}-name`).value.trim() || 'Document.txt';
+        const content = document.getElementById(`${winId}-txt`).value;
+        await DriveStorage.writeFile(name, content, fileId || null, DriveExplorer.currentFolder);
+      }
+    };
+
+    /* 13. CLOUD TERMINAL SHELL */
+    const CloudTerminalApp = {
+      open() {
+        WindowManager.create({
+          id: 'terminal',
+          title: 'Cloud Shell',
+          icon: 'terminal',
+          width: 560,
+          height: 360,
+          contentHtml: `
+            <div id="term-out" class="flex-1 p-3 bg-slate-950/90 text-emerald-400 font-mono text-xs overflow-y-auto space-y-1">
+              <div>CloudOS v3.5 Shell [PWA & Apps Script Edition]</div>
+              <div class="text-slate-500">Type 'help' for command list.</div>
+            </div>
+            <div class="h-9 bg-black/60 border-t border-white/10 flex items-center px-3 font-mono text-xs">
+              <span class="text-indigo-400 mr-2">shell$</span>
+              <input type="text" id="term-in" class="flex-1 bg-transparent text-white focus:outline-none" onkeydown="if(event.key==='Enter') CloudTerminalApp.exec(this)">
+            </div>
+          `
+        });
+      },
+      async exec(input) {
+        const out = document.getElementById('term-out');
+        const cmd = input.value.trim();
+        input.value = '';
+        if (!cmd) return;
+
+        out.innerHTML += `<div><span class="text-indigo-400">shell$</span> ${cmd}</div>`;
+        const [action, ...args] = cmd.split(' ');
+        let resp = '';
+
+        if (action === 'help') resp = 'Commands: help, ls, clear, whoami, date, copy <txt>, paste, neofetch';
+        else if (action === 'clear') { out.innerHTML = ''; return; }
+        else if (action === 'whoami') resp = AuthEngine.currentUser ? AuthEngine.currentUser.username : 'guest';
+        else if (action === 'date') resp = new Date().toString();
+        else if (action === 'copy') { ClipboardSystem.copyText(args.join(' ')); resp = 'Copied to clipboard.'; }
+        else if (action === 'paste') resp = ClipboardSystem.history[0] || 'Clipboard empty';
+        else if (action === 'ls') {
+          const files = await DriveStorage.listFiles('root');
+          resp = files.map(f => `${f.type === 'folder' ? '[DIR]' : '[FILE]'} ${f.name}`).join('\n');
+        }
+        else if (action === 'neofetch') {
+          resp = `CloudOS Web Desktop PWA\nKernel: Apps Script WebApp\nStorage: Google Drive REST v3\nDevice: ${navigator.userAgent.slice(0, 32)}...`;
+        } else {
+          resp = `Command not recognized: ${action}`;
+        }
+
+        out.innerHTML += `<div class="text-slate-300 whitespace-pre-wrap">${resp}</div>`;
+        out.scrollTop = out.scrollHeight;
+      }
+    };
+
+    /* 14. CALCULATOR */
+    const CalculatorApp = {
+      open() {
+        WindowManager.create({
+          id: 'calculator',
+          title: 'Calculator',
+          icon: 'calculator',
+          width: 300,
+          height: 380,
+          contentHtml: `
+            <div class="p-3 flex flex-col h-full space-y-2 text-xs font-semibold">
+              <div id="calc-dsp" class="bg-black/50 border border-white/10 rounded-xl p-3 text-right text-2xl font-mono text-white min-h-[50px]">0</div>
+              <div class="grid grid-cols-4 gap-1.5 flex-1">
+                <button onclick="CalculatorApp.press('C')" class="p-2 bg-red-500/20 text-red-300 rounded-xl">C</button>
+                <button onclick="CalculatorApp.press('/')" class="p-2 bg-indigo-600/40 text-white rounded-xl">÷</button>
+                <button onclick="CalculatorApp.press('*')" class="p-2 bg-indigo-600/40 text-white rounded-xl">×</button>
+                <button onclick="CalculatorApp.press('-')" class="p-2 bg-indigo-600/40 text-white rounded-xl">−</button>
+                <button onclick="CalculatorApp.press('7')" class="p-2 bg-white/10 text-white rounded-xl">7</button>
+                <button onclick="CalculatorApp.press('8')" class="p-2 bg-white/10 text-white rounded-xl">8</button>
+                <button onclick="CalculatorApp.press('9')" class="p-2 bg-white/10 text-white rounded-xl">9</button>
+                <button onclick="CalculatorApp.press('+')" class="p-2 bg-indigo-600/40 text-white rounded-xl">+</button>
+                <button onclick="CalculatorApp.press('4')" class="p-2 bg-white/10 text-white rounded-xl">4</button>
+                <button onclick="CalculatorApp.press('5')" class="p-2 bg-white/10 text-white rounded-xl">5</button>
+                <button onclick="CalculatorApp.press('6')" class="p-2 bg-white/10 text-white rounded-xl">6</button>
+                <button onclick="CalculatorApp.calc()" class="row-span-2 p-2 bg-indigo-600 text-white rounded-xl flex items-center justify-center">=</button>
+                <button onclick="CalculatorApp.press('1')" class="p-2 bg-white/10 text-white rounded-xl">1</button>
+                <button onclick="CalculatorApp.press('2')" class="p-2 bg-white/10 text-white rounded-xl">2</button>
+                <button onclick="CalculatorApp.press('3')" class="p-2 bg-white/10 text-white rounded-xl">3</button>
+                <button onclick="CalculatorApp.press('0')" class="col-span-2 p-2 bg-white/10 text-white rounded-xl">0</button>
+                <button onclick="CalculatorApp.press('.')" class="p-2 bg-white/10 text-white rounded-xl">.</button>
+              </div>
+            </div>
+          `
+        });
+      },
+      val: '',
+      press(k) {
+        SoundEngine.click();
+        if (k === 'C') this.val = '';
+        else this.val += k;
+        document.getElementById('calc-dsp').textContent = this.val || '0';
+      },
+      calc() {
+        SoundEngine.click();
+        try {
+          const res = Function(`'use strict'; return (${this.val.replace(/[^0-9+\-*/.]/g, '')})`)();
+          this.val = String(res);
+          document.getElementById('calc-dsp').textContent = this.val;
+        } catch(e) {
+          document.getElementById('calc-dsp').textContent = 'Error';
+          this.val = '';
+        }
+      }
+    };
+
+    /* 15. TASK MANAGER */
+    const TaskManagerApp = {
+      open() {
+        WindowManager.create({
+          id: 'taskmgr',
+          title: 'Task Manager',
+          icon: 'activity',
+          width: 500,
+          height: 360,
+          contentHtml: `
+            <div class="p-4 flex flex-col h-full space-y-3 text-xs">
+              <div class="acrylic-card p-3 rounded-xl flex justify-between items-center text-slate-300">
+                <span>Active Operating Processes:</span>
+                <span class="text-indigo-400 font-bold" id="tm-count">${Object.keys(WindowManager.windows).length} Windows</span>
+              </div>
+              <div id="tm-list" class="flex-1 overflow-y-auto divide-y divide-white/10 acrylic-card rounded-xl p-2"></div>
+            </div>
+          `,
+          onInit: () => {
+            const list = document.getElementById('tm-list');
+            list.innerHTML = Object.entries(WindowManager.windows).map(([id, win]) => `
+              <div class="py-2 flex justify-between items-center text-slate-200">
+                <span>${win.title}</span>
+                <button onclick="WindowManager.close('${id}'); AppManager.launch('taskmgr')" class="px-2 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/40">End Process</button>
+              </div>
+            `).join('');
+          }
+        });
+      }
+    };
+
+    /* 16. SETTINGS APP WITH EXPANDED WALLPAPER GALLERY */
+    const SettingsApp = {
+      wallpapers: [
+        { name: 'Aurora Vibrant', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070' },
+        { name: 'Cosmic Nebula', url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=2070' },
+        { name: 'Cyberpunk Neon City', url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?q=80&w=2070' },
+        { name: 'Minimalist Architecture', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2070' },
+        { name: 'Mountain Sunset', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2070' },
+        { name: 'Deep Ocean Gradient', url: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=2070' }
+      ],
+      open({ tab = 'drive' } = {}) {
+        WindowManager.create({
+          id: 'settings',
+          title: 'Settings',
+          icon: 'settings',
+          width: 660,
+          height: 480,
+          contentHtml: `
+            <div class="h-full flex text-xs">
+              <div class="w-40 bg-white/5 border-r border-white/10 p-2 space-y-1">
+                <button onclick="SettingsApp.tab('drive')" id="set-t-drive" class="w-full text-left px-3 py-2 rounded-xl bg-white/10 text-white">Google Drive</button>
+                <button onclick="SettingsApp.tab('wallpapers')" id="set-t-wallpapers" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/5 text-slate-300">Wallpapers</button>
+                <button onclick="SettingsApp.tab('script')" id="set-t-script" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/5 text-slate-300">Apps Script</button>
+              </div>
+              <div class="flex-1 p-4 overflow-y-auto space-y-4">
+                <div id="set-sec-drive" class="space-y-3">
+                  <h4 class="font-semibold text-white">Google Drive Integration Settings</h4>
+                  <p class="text-slate-400 text-[11px]">Your keys are stored in the Admin Google Sheet for seamless access across all devices.</p>
+                  <div>
+                    <label class="block text-slate-300 mb-1">OAuth Client ID</label>
+                    <input type="text" id="set-cid" value="${DriveStorage.clientId}" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px]">
+                  </div>
+                  <div>
+                    <label class="block text-slate-300 mb-1">Google API Key</label>
+                    <input type="password" id="set-akey" value="${DriveStorage.apiKey}" class="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px]">
+                  </div>
+                  <button onclick="DriveStorage.connectWithCredentials(document.getElementById('set-cid').value, document.getElementById('set-akey').value)" class="px-4 py-2 bg-indigo-600 rounded-xl text-white font-medium">Save & Authenticate Drive</button>
+                </div>
+                
+                <div id="set-sec-wallpapers" class="space-y-3 hidden">
+                  <h4 class="font-semibold text-white">High-Definition Wallpaper Gallery</h4>
+                  <div class="grid grid-cols-2 gap-2.5">
+                    ${SettingsApp.wallpapers.map(w => `
+                      <button onclick="Desktop.setWallpaper('${w.url}')" class="group h-20 rounded-2xl bg-cover bg-center border border-white/20 relative overflow-hidden flex items-end p-2 transition hover:border-indigo-400" style="background-image:url('${w.url}')">
+                        <span class="bg-black/60 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-sm truncate">${w.name}</span>
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <div id="set-sec-script" class="space-y-3 hidden">
+                  <h4 class="font-semibold text-white">Apps Script Endpoint</h4>
+                  <p class="text-slate-400 text-[11px]">Direct integration with Admin Google Sheet.</p>
+                  <button onclick="AuthEngine.openScriptConfigModal()" class="px-4 py-2 bg-indigo-600 rounded-xl text-white">Open Backend Setup Guide</button>
+                </div>
+              </div>
+            </div>
+          `
+        });
+      },
+      tab(name) {
+        ['drive', 'wallpapers', 'script'].forEach(t => {
+          document.getElementById(`set-sec-${t}`).classList.toggle('hidden', t !== name);
+          document.getElementById(`set-t-${t}`).className = t === name ? 'w-full text-left px-3 py-2 rounded-xl bg-white/10 text-white' : 'w-full text-left px-3 py-2 rounded-xl hover:bg-white/5 text-slate-300';
+        });
+      }
+    };
+
+    const Desktop = {
+      isStartOpen: false,
+
+      init() {
+        this.renderDesktopIcons();
+        this.renderStartApps();
+        this.startClock();
+
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) this.closeStartMenu();
+          if (!e.target.closest('#context-menu')) this.closeContextMenu();
+          if (!e.target.closest('#calendar-popover') && !e.target.closest('#tray-clock')) document.getElementById('calendar-popover').classList.add('hidden');
+        });
+      },
+
+      renderDesktopIcons() {
+        const container = document.getElementById('desktop-icons-container');
+        const defaultShortcuts = [
+          { appId: 'explorer', name: 'Google Drive', icon: 'hard-drive', color: 'text-indigo-400' },
+          { appId: 'browser', name: 'Browser', icon: 'globe', color: 'text-cyan-400' },
+          { appId: 'email', name: 'Mail', icon: 'mail', color: 'text-blue-400' },
+          { appId: 'whatsapp', name: 'WhatsApp', icon: 'message-circle', color: 'text-emerald-400' },
+          { appId: 'scanner', name: 'Scanner', icon: 'camera', color: 'text-teal-400' },
+          { appId: 'docviewer', name: 'Doc Viewer', icon: 'file-search', color: 'text-amber-400' },
+          { appId: 'todo', name: 'Tasks', icon: 'check-square', color: 'text-emerald-300' },
+          { appId: 'alarm', name: 'Alarm/Timer', icon: 'clock', color: 'text-orange-400' },
+          { appId: 'installer', name: 'App Installer', icon: 'package-plus', color: 'text-violet-400' },
+          { appId: 'control', name: 'Control Panel', icon: 'sliders-horizontal', color: 'text-pink-400' },
+          { appId: 'editor', name: 'Editor', icon: 'file-text', color: 'text-sky-400' },
+          { appId: 'terminal', name: 'Shell', icon: 'terminal', color: 'text-green-400' },
+          { appId: 'calculator', name: 'Calculator', icon: 'calculator', color: 'text-yellow-400' },
+          { appId: 'settings', name: 'Settings', icon: 'settings', color: 'text-slate-300' }
+        ];
+
+        const customShortcuts = CustomAppEngine.installedApps.map(a => ({
+          appId: a.id,
+          name: a.name,
+          icon: a.icon || 'cpu',
+          color: 'text-purple-400'
+        }));
+
+        const all = [...defaultShortcuts, ...customShortcuts];
+
+        container.innerHTML = all.map(s => `
+          <div onclick="SoundEngine.click(); AppManager.launch('${s.appId}')" class="flex flex-col items-center justify-center p-2 rounded-2xl hover:bg-white/15 active:scale-95 transition cursor-pointer w-18 sm:w-20 text-center select-none">
+            <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center mb-1 shadow-lg backdrop-blur-md border border-white/15">
+              <i data-lucide="${s.icon}" class="w-6 h-6 ${s.color}"></i>
+            </div>
+            <span class="text-[11px] font-medium text-white drop-shadow truncate w-full">${s.name}</span>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      },
+
+      renderStartApps(filter = '') {
+        const grid = document.getElementById('start-apps-grid');
+        if (!grid) return;
+
+        const apps = Object.entries(AppManager.apps)
+          .filter(([k, v]) => v.title.toLowerCase().includes(filter.toLowerCase()));
+
+        const custom = CustomAppEngine.installedApps
+          .filter(a => a.name.toLowerCase().includes(filter.toLowerCase()))
+          .map(a => [a.id, { title: a.name, icon: a.icon || 'cpu' }]);
+
+        grid.innerHTML = [...apps, ...custom].map(([id, app]) => `
+          <button onclick="AppManager.launch('${id}')" class="flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center">
+            <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center mb-1 border border-white/10">
+              <i data-lucide="${app.icon}" class="w-4 h-4 text-indigo-400"></i>
+            </div>
+            <span class="text-[10px] text-slate-200 truncate w-full">${app.title}</span>
+          </button>
+        `).join('');
+        lucide.createIcons();
+      },
+
+      filterStartApps(term) {
+        this.renderStartApps(term);
+      },
+
+      toggleStartMenu(searchFocus = false) {
+        this.isStartOpen = !this.isStartOpen;
+        const m = document.getElementById('start-menu');
+        m.classList.toggle('hidden', !this.isStartOpen);
+        if (this.isStartOpen && searchFocus) {
+          const inp = document.getElementById('start-search-input');
+          if (inp) inp.focus();
+        }
+      },
+      closeStartMenu() {
+        this.isStartOpen = false;
+        document.getElementById('start-menu').classList.add('hidden');
+      },
+
+      openContextMenu(e) {
+        const menu = document.getElementById('context-menu');
+        menu.style.left = `${Math.min(e.clientX, window.innerWidth - 220)}px`;
+        menu.style.top = `${Math.min(e.clientY, window.innerHeight - 220)}px`;
+        menu.classList.remove('hidden');
+      },
+      closeContextMenu() {
+        document.getElementById('context-menu').classList.add('hidden');
+      },
+
+      toggleCalendar() {
+        document.getElementById('calendar-popover').classList.toggle('hidden');
+      },
+
+      setWallpaper(url) {
+        document.getElementById('desktop-wallpaper').style.backgroundImage = `url('${url}')`;
+      },
+
+      startClock() {
+        const tick = () => {
+          const d = new Date();
+          const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const dateStr = d.toISOString().split('T')[0];
+          document.getElementById('tray-clock').textContent = timeStr;
+          document.getElementById('tray-date').textContent = dateStr;
+          
+          const wClock = document.getElementById('widget-clock');
+          if (wClock) wClock.textContent = timeStr;
+        };
+        tick();
+        setInterval(tick, 1000);
+      }
+    };
+
+    /* Calendar Widget Component */
+    const CalendarView = {
+      d: new Date(),
+      init() { this.render(); },
+      render() {
+        const grid = document.getElementById('cal-grid');
+        const miniGrid = document.getElementById('widget-cal-mini');
+        const my = document.getElementById('cal-month-year');
+        const y = this.d.getFullYear(), m = this.d.getMonth();
+        if (my) my.textContent = this.d.toLocaleDateString([], { month: 'long', year: 'numeric' });
+        const first = new Date(y, m, 1).getDay();
+        const total = new Date(y, m + 1, 0).getDate();
+        
+        let html = '';
+        for (let i = 0; i < first; i++) html += '<span></span>';
+        for (let i = 1; i <= total; i++) {
+          html += `<span class="py-1 rounded hover:bg-white/10 text-white ${i === 19 ? 'bg-indigo-600 font-bold' : ''}">${i}</span>`;
+        }
+        if (grid) grid.innerHTML = html;
+        if (miniGrid) miniGrid.innerHTML = html;
+      },
+      prevMonth() { this.d.setMonth(this.d.getMonth() - 1); this.render(); },
+      nextMonth() { this.d.setMonth(this.d.getMonth() + 1); this.render(); }
+    };
+
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.log('SW registration note:', err);
+        });
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      AuthEngine.init();
+      DriveStorage.init();
+      ClipboardSystem.init();
+      VirtualKeyboard.init();
+      TodoEngine.init();
+      Desktop.init();
+      CalendarView.init();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

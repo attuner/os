@@ -1,0 +1,24 @@
+{
+"name": "CloudOS — Web Desktop",
+"short_name": "CloudOS",
+"description": "Replica Cloud Desktop Operating System with Google Drive & Google Sheet backend",
+"start_url": "./index.html",
+"display": "standalone",
+"background_color": "#020617",
+"theme_color": "#4f46e5",
+"orientation": "any",
+"icons": [
+{
+"src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=192&auto=format&fit=crop&q=80",
+"sizes": "192x192",
+"type": "image/png",
+"purpose": "any maskable"
+},
+{
+"src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=512&auto=format&fit=crop&q=80",
+"sizes": "512x512",
+"type": "image/png",
+"purpose": "any maskable"
+}
+]
+}
