@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Windows 11 CloudOS</title>
 
-  <!-- Fluent Typography: Segoe UI / Roboto Fonts matching Windows 11 Design System -->
+  <!-- Typography: Segoe UI / Cascadia Code -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=Cascadia+Code:wght@400;600&display=swap" rel="stylesheet">
@@ -14,91 +14,89 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Real Microsoft Word (.docx) Binary Parsing Engine -->
+  <!-- Mammoth.js for Parsing Word (.docx) Files -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
   <style>
     :root {
-      --font-win: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+      --font-win: 'Segoe UI', system-ui, -apple-system, sans-serif;
       --font-code: 'Cascadia Code', Consolas, monospace;
-      --win-blue: #0067c0;
-      --win-accent: #0078d4;
     }
     * {
       font-family: var(--font-win);
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
       box-sizing: border-box;
     }
-    input, textarea, [contenteditable="true"], pre, code {
-      user-select: text !important;
+    /* Explicit pointer event handling so buttons are always clickable */
+    button, input, select, textarea, [role="button"] {
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      user-select: auto !important;
     }
-    /* Windows 11 Acrylic / Mica Glassmorphism */
-    .mica {
-      background: rgba(32, 32, 32, 0.82);
-      backdrop-filter: blur(36px) saturate(180%);
-      -webkit-backdrop-filter: blur(36px) saturate(180%);
+    .auth-tab-hidden {
+      display: none !important;
+      pointer-events: none !important;
+    }
+    .auth-tab-visible {
+      display: block !important;
+      pointer-events: auto !important;
+    }
+    /* Windows 11 Mica & Acrylic materials */
+    .win-mica {
+      background: rgba(30, 30, 30, 0.84);
+      backdrop-filter: blur(40px) saturate(190%);
+      -webkit-backdrop-filter: blur(40px) saturate(190%);
       border: 1px solid rgba(255, 255, 255, 0.12);
     }
-    .mica-light {
-      background: rgba(243, 243, 243, 0.85);
-      backdrop-filter: blur(36px) saturate(180%);
-      -webkit-backdrop-filter: blur(36px) saturate(180%);
-      border: 1px solid rgba(0, 0, 0, 0.08);
+    .win-acrylic {
+      background: rgba(36, 36, 36, 0.94);
+      backdrop-filter: blur(50px) saturate(200%);
+      -webkit-backdrop-filter: blur(50px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
     }
-    .acrylic-popup {
-      background: rgba(40, 40, 40, 0.94);
-      backdrop-filter: blur(48px) saturate(200%);
-      -webkit-backdrop-filter: blur(48px) saturate(200%);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.48);
-    }
-    .taskbar-mica {
-      background: rgba(28, 28, 28, 0.80);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
+    .taskbar-surface {
+      background: rgba(24, 24, 24, 0.82);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
       border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
-    /* Custom Thin Scrollbars */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(160, 160, 160, 0.35); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(160, 160, 160, 0.65); }
-
-    /* Responsive adjustments for iPad Mini 6 (744x1133 pt) & Tablets */
+    ::-webkit-scrollbar-thumb { background: rgba(160, 160, 160, 0.3); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(160, 160, 160, 0.6); }
     @media (min-width: 744px) and (max-width: 1133px) {
-      .win-app-icon { width: 72px; height: 82px; }
+      .win-desktop-icon { width: 72px; height: 82px; }
     }
   </style>
 </head>
 
-<body class="h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased flex flex-col relative select-none">
+<body class="h-screen w-screen overflow-hidden bg-black text-slate-100 flex flex-col relative select-none">
 
-  <!-- ==================== DESKTOP WORKSPACE ==================== -->
+  <!-- ==================== DESKTOP CANVAS ==================== -->
   <main id="desktop" class="relative flex-1 w-full overflow-hidden bg-cover bg-center transition-all duration-700"
-        style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564');"
-        oncontextmenu="handleDesktopContextMenu(event)">
+        style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564');">
 
     <!-- Screen Brightness Dimmer Overlay -->
-    <div id="dimmerOverlay" class="absolute inset-0 bg-black pointer-events-none z-40 transition-opacity duration-300 opacity-0"></div>
+    <div id="dimmerOverlay" class="absolute inset-0 bg-black pointer-events-none z-30 transition-opacity duration-300 opacity-0"></div>
 
     <!-- Desktop Icons Grid -->
     <div id="desktopIcons" class="absolute inset-0 p-3 grid grid-flow-col grid-rows-[repeat(auto-fill,88px)] gap-2 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-10"></div>
 
-    <!-- Windows 11 Desktop Interactive Widgets Pane -->
+    <!-- Desktop Interactive Widgets Pane -->
     <div id="widgetsPane" class="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none [&>*]:pointer-events-auto z-10 max-w-xs w-full">
-      <!-- Calendar & Time Widget -->
-      <div class="mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
+      <!-- Live Clock / Weather Widget -->
+      <div class="win-mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
         <div class="flex items-center justify-between mb-1">
-          <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Hyderabad, India</span>
+          <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Cloud Workstation</span>
           <i data-lucide="cloud-sun" class="w-4 h-4 text-amber-400"></i>
         </div>
         <div class="text-3xl font-light tracking-tight" id="widgetTime">03:02</div>
         <div class="text-xs text-white/70" id="widgetDate">Sunday, September 20, 2026</div>
       </div>
 
-      <!-- Real Microsoft To-Do Widget -->
-      <div class="mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
+      <!-- Real Microsoft To-Do Checklist Widget -->
+      <div class="win-mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
         <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
             <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Microsoft To Do
@@ -114,23 +112,18 @@
       </div>
     </div>
 
-    <!-- Windows Workspace Container -->
+    <!-- Multi-Window Desktop Workspace -->
     <div id="windowsContainer" class="absolute inset-0 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-20"></div>
 
-    <!-- Precision Virtual Mouse Cursor (Trackpad Controlled) -->
+    <!-- Virtual Mouse Cursor (Controlled by Trackpad) -->
     <div id="virtualCursor" class="hidden absolute w-4 h-4 -top-2 -left-2 pointer-events-none z-[9999] transition-[top,left] duration-75">
-      <svg class="w-6 h-6 text-blue-500 drop-shadow-xl" viewBox="0 0 24 24" fill="currentColor">
+      <svg class="w-6 h-6 text-blue-500 drop-shadow-2xl" viewBox="0 0 24 24" fill="currentColor">
         <path d="M4 2l16 11-7.5 1.5 4.5 7.5-2.5 1.5-4.5-7.5L4 20V2z"/>
       </svg>
     </div>
-
-    <!-- Desktop Context Menu -->
-    <div id="contextMenu" class="hidden absolute acrylic-popup text-white rounded-xl shadow-2xl py-1.5 w-52 z-[9990] text-xs border border-white/15">
-      <div id="contextMenuItems" class="divide-y divide-white/10"></div>
-    </div>
   </main>
 
-  <!-- ==================== DOCKED TRACKPAD (TABLETS & PHONES) ==================== -->
+  <!-- ==================== PRECISION MOUSE TRACKPAD ==================== -->
   <div id="touchTrackpad" class="hidden w-full h-[20vh] bg-slate-900 border-t border-slate-700 flex flex-col z-40 transition-all select-none">
     <div class="flex justify-between items-center px-4 py-1.5 bg-slate-800 text-xs text-slate-300">
       <span class="flex items-center gap-1.5"><i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-blue-400"></i> Windows Precision Trackpad</span>
@@ -141,7 +134,7 @@
     </div>
     <div class="flex-1 flex overflow-hidden">
       <div id="trackpadArea" class="flex-1 bg-slate-950/70 m-1 rounded-xl border border-slate-700 relative touch-none flex items-center justify-center text-slate-500 text-xs">
-        Touch & slide finger to control Windows cursor
+        Touch & slide finger to control mouse cursor
       </div>
       <div class="w-28 flex flex-col gap-1 p-1">
         <button id="trackpadLeftClick" class="flex-1 bg-slate-800 active:bg-blue-600 rounded-lg text-slate-200 font-semibold text-xs border border-slate-700">L-Click</button>
@@ -150,8 +143,8 @@
     </div>
   </div>
 
-  <!-- ==================== FLOATING VIRTUAL KEYBOARD ==================== -->
-  <div id="virtualKeyboard" class="hidden fixed z-[9998] acrylic-popup text-white rounded-2xl shadow-2xl border border-white/20 p-3 flex flex-col gap-1.5 w-[94vw] max-w-xl touch-none"
+  <!-- ==================== VIRTUAL TOUCH KEYBOARD ==================== -->
+  <div id="virtualKeyboard" class="hidden fixed z-[9998] win-acrylic text-white rounded-2xl shadow-2xl border border-white/20 p-3 flex flex-col gap-1.5 w-[94vw] max-w-xl touch-none"
        style="bottom: 60px; left: 50%; transform: translateX(-50%);">
     <div class="flex items-center justify-between pb-1 px-2 border-b border-white/10 cursor-move" id="kbHeader">
       <span class="text-xs font-semibold text-white/80 flex items-center gap-1.5">
@@ -166,17 +159,17 @@
   </div>
 
   <!-- ==================== WINDOWS 11 CENTERED TASKBAR ==================== -->
-  <footer id="taskbar" class="w-full h-12 taskbar-mica flex items-center justify-between px-3 z-40 relative select-none">
+  <footer id="taskbar" class="w-full h-12 taskbar-surface flex items-center justify-between px-3 z-40 relative select-none">
     
-    <!-- Left: Widgets Pane Flyout Button -->
+    <!-- Left: Widgets Button -->
     <div class="flex items-center">
       <button onclick="toggleWidgetsPane()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5 text-white/80" title="Widgets">
         <i data-lucide="cloud-sun" class="w-4 h-4 text-blue-400"></i>
-        <span class="hidden md:inline text-xs font-medium">Hyderabad 26°C</span>
+        <span class="hidden md:inline text-xs font-medium">Cloud 26°C</span>
       </button>
     </div>
 
-    <!-- Center: Centered Windows 11 Pinned & Running Apps -->
+    <!-- Center: Windows 11 Start & Running Apps -->
     <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
       <!-- Windows 11 Start Button -->
       <button onclick="toggleStartMenu()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition text-blue-400" title="Start">
@@ -185,79 +178,50 @@
         </svg>
       </button>
 
-      <!-- Task View (Virtual Desktops / Recent Apps) -->
-      <button onclick="toggleTaskView()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition text-white/70" title="Task View">
-        <i data-lucide="layers" class="w-4 h-4"></i>
-      </button>
-
-      <!-- Pinned Taskbar Apps Grid -->
+      <!-- Taskbar Pinned Apps -->
       <div id="taskbarPinnedApps" class="flex items-center gap-1"></div>
-
-      <!-- Divider -->
       <div class="w-px h-5 bg-white/20 mx-1"></div>
-
-      <!-- Active Running Instances List -->
+      <!-- Taskbar Running Instances -->
       <div id="taskbarRunningApps" class="flex items-center gap-1 max-w-[30vw] overflow-x-auto"></div>
     </div>
 
-    <!-- Right: Windows 11 System Tray & Quick Settings Flyout -->
+    <!-- Right: System Tray & Clocks -->
     <div class="flex items-center gap-2 text-xs text-white">
-      <button onclick="toggleVirtualKeyboard()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Touch Keyboard">
+      <button onclick="toggleVirtualKeyboard()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Keyboard">
         <i data-lucide="keyboard" class="w-4 h-4"></i>
       </button>
-
-      <button onclick="toggleTrackpad()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Precision Mouse Trackpad">
+      <button onclick="toggleTrackpad()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Trackpad">
         <i data-lucide="mouse" class="w-4 h-4"></i>
       </button>
 
-      <!-- Quick Settings Cluster (Wi-Fi, Volume, Battery) -->
       <div onclick="toggleQuickSettings()" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex items-center gap-2 text-white/80 transition active:scale-95">
         <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
         <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
         <i data-lucide="battery" class="w-3.5 h-3.5"></i>
       </div>
 
-      <!-- Notification & Calendar Clock -->
-      <div onclick="toggleCalendarFlyout()" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex flex-col items-end leading-tight text-right text-white/90">
+      <div onclick="launchApp('settings')" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex flex-col items-end leading-tight text-right text-white/90">
         <span id="taskbarTime" class="font-semibold text-xs">03:02 AM</span>
         <span id="taskbarDate" class="text-[10px] text-white/60">9/20/2026</span>
       </div>
-
-      <!-- Show Desktop Stripe -->
       <div onclick="minimizeAllWindows()" class="w-1.5 h-8 border-l border-white/20 hover:bg-white/20 cursor-pointer ml-1" title="Show Desktop"></div>
     </div>
   </footer>
 
-  <!-- ==================== WINDOWS 11 CENTERED START MENU ==================== -->
-  <aside id="startMenu" class="hidden absolute bottom-14 left-1/2 -translate-x-1/2 w-[92vw] max-w-xl acrylic-popup text-white rounded-2xl shadow-2xl p-6 z-50 border border-white/20">
-    <!-- Top Search Bar -->
+  <!-- ==================== WINDOWS 11 START MENU ==================== -->
+  <aside id="startMenu" class="hidden absolute bottom-14 left-1/2 -translate-x-1/2 w-[92vw] max-w-xl win-acrylic text-white rounded-2xl shadow-2xl p-6 z-50 border border-white/20">
     <div class="relative mb-5">
       <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-white/50"></i>
-      <input id="startSearchInput" oninput="filterStartApps(this.value)" type="text" placeholder="Type here to search apps, settings, and cloud files..."
+      <input id="startSearchInput" oninput="filterStartApps(this.value)" type="text" placeholder="Type here to search apps, files, tools..."
              class="w-full bg-white/10 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-white/40 outline-none focus:ring-1 focus:ring-blue-400" />
     </div>
 
-    <!-- Pinned Apps Section -->
     <div class="flex items-center justify-between mb-3 text-xs font-semibold text-white/80">
       <span>Pinned Applications</span>
       <button onclick="renderStartApps(true)" class="text-blue-400 hover:text-blue-300">All Apps &gt;</button>
     </div>
     <div id="startAppGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-64 overflow-y-auto p-1 mb-5"></div>
 
-    <!-- Recommended Recent Documents -->
-    <div class="text-xs font-semibold text-white/80 mb-2">Recommended</div>
-    <div id="startRecommendedList" class="grid grid-cols-2 gap-2 text-xs mb-5">
-      <div class="p-2 rounded-xl hover:bg-white/10 flex items-center gap-2 cursor-pointer" onclick="launchApp('word')">
-        <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
-        <div class="truncate"><div class="font-medium truncate">Document.docx</div><div class="text-[10px] text-white/50">Google Drive</div></div>
-      </div>
-      <div class="p-2 rounded-xl hover:bg-white/10 flex items-center gap-2 cursor-pointer" onclick="launchApp('vscode')">
-        <i data-lucide="code" class="w-4 h-4 text-blue-500"></i>
-        <div class="truncate"><div class="font-medium truncate">index.html</div><div class="text-[10px] text-white/50">Code Studio</div></div>
-      </div>
-    </div>
-
-    <!-- User Profile & Power Buttons Footer -->
     <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
       <div class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-md" id="userAvatarLetter">U</div>
@@ -266,24 +230,22 @@
           <div class="text-[10px] text-white/50" id="startEmail">Cloud Mode</div>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button onclick="handleLogout()" class="p-2 rounded-xl hover:bg-red-500/20 text-red-400 transition" title="Sign Out">
-          <i data-lucide="log-out" class="w-4 h-4"></i>
-        </button>
-      </div>
+      <button onclick="handleLogout()" class="p-2 rounded-xl hover:bg-red-500/20 text-red-400 transition" title="Sign Out">
+        <i data-lucide="log-out" class="w-4 h-4"></i>
+      </button>
     </div>
   </aside>
 
-  <!-- ==================== WINDOWS 11 QUICK SETTINGS FLYOUT ==================== -->
-  <aside id="quickSettingsFlyout" class="hidden absolute bottom-14 right-4 w-80 acrylic-popup text-white rounded-2xl p-4 shadow-2xl z-50 border border-white/20 space-y-4">
+  <!-- ==================== QUICK SETTINGS FLYOUT ==================== -->
+  <aside id="quickSettingsFlyout" class="hidden absolute bottom-14 right-4 w-80 win-acrylic text-white rounded-2xl p-4 shadow-2xl z-50 border border-white/20 space-y-4">
     <div class="grid grid-cols-3 gap-2">
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15 active:scale-95" onclick="this.classList.toggle('bg-blue-600')">
+      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
         <i data-lucide="wifi" class="w-4 h-4"></i><span class="text-[11px]">Wi-Fi</span>
       </div>
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15 active:scale-95" onclick="this.classList.toggle('bg-blue-600')">
+      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
         <i data-lucide="bluetooth" class="w-4 h-4"></i><span class="text-[11px]">Bluetooth</span>
       </div>
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15 active:scale-95" onclick="this.classList.toggle('bg-blue-600')">
+      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
         <i data-lucide="plane" class="w-4 h-4"></i><span class="text-[11px]">Airplane</span>
       </div>
     </div>
@@ -292,16 +254,13 @@
         <div class="flex justify-between mb-1 text-white/70"><span>Screen Dimmer</span><i data-lucide="sun" class="w-3.5 h-3.5"></i></div>
         <input type="range" min="0" max="85" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-blue-500 cursor-pointer" />
       </div>
-      <div>
-        <div class="flex justify-between mb-1 text-white/70"><span>Volume</span><i data-lucide="volume-2" class="w-3.5 h-3.5"></i></div>
-        <input type="range" min="0" max="100" value="80" class="w-full accent-blue-500 cursor-pointer" />
-      </div>
     </div>
   </aside>
 
-  <!-- ==================== AUTH GATE MODAL ==================== -->
-  <div id="authGate" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-    <div class="acrylic-popup border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md text-white shadow-2xl">
+  <!-- ==================== 100% BULLETPROOF AUTHENTICATION MODAL ==================== -->
+  <div id="authGate" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
+    <div class="win-acrylic border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md text-white shadow-2xl relative z-[10001] pointer-events-auto">
+      
       <div class="flex items-center gap-3 mb-5">
         <div class="p-3 bg-blue-600 rounded-2xl shadow-lg">
           <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
@@ -310,490 +269,110 @@
         </div>
         <div>
           <h1 class="text-xl font-bold tracking-tight">Windows 11 CloudOS</h1>
-          <p class="text-xs text-white/60">Zero-device footprint cloud operating system</p>
+          <p class="text-xs text-white/60">Zero local footprint cloud workstation</p>
         </div>
       </div>
 
-      <!-- Backend Script Setup Link -->
+      <!-- Apps Script Web App Endpoint Input -->
       <div class="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs space-y-1">
-        <label class="font-medium text-blue-300">Google Apps Script Web App Endpoint:</label>
+        <label class="font-medium text-blue-300">Google Apps Script Web App URL:</label>
         <input id="cfgAppsScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"
-               class="w-full bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+               class="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
       </div>
 
-      <!-- Tab Switcher -->
+      <!-- Tab Switcher (Sign In / Register / Reset) -->
       <div class="flex rounded-xl bg-white/10 p-1 mb-4 text-xs">
-        <button id="authTabLogin" type="button" onclick="switchAuthTab('login')" class="flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition">Sign In</button>
-        <button id="authTabRegister" type="button" onclick="switchAuthTab('register')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Register</button>
-        <button id="authTabForgot" type="button" onclick="switchAuthTab('forgot')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Reset</button>
+        <button id="tabBtnLogin" type="button" onclick="activateAuthTab('login')" class="flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition">Sign In</button>
+        <button id="tabBtnRegister" type="button" onclick="activateAuthTab('register')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Register</button>
+        <button id="tabBtnForgot" type="button" onclick="activateAuthTab('forgot')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Reset</button>
       </div>
 
-      <!-- Sign In Form -->
-      <div id="containerLogin" class="space-y-3">
+      <!-- Tab 1: Login Form -->
+      <div id="paneLogin" class="auth-tab-visible space-y-3">
         <div>
           <label class="text-xs text-white/70 block mb-1">Username</label>
-          <input id="loginUser" type="text" placeholder="Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+          <input id="loginUsername" type="text" placeholder="Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
         </div>
         <div>
           <label class="text-xs text-white/70 block mb-1">Password</label>
-          <input id="loginPass" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+          <input id="loginPassword" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
         </div>
-        <button id="btnLoginAction" type="button" onclick="submitAuth('login')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Sign In to Windows 11</button>
-      </div>
-
-      <!-- Register Form -->
-      <div id="containerRegister" class="space-y-3 hidden">
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Desired Username</label>
-          <input id="regUser" type="text" placeholder="Enter username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Email Address (For Password Recovery)</label>
-          <input id="regEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Create Password</label>
-          <input id="regPass" type="password" placeholder="Create password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <button id="btnRegisterAction" type="button" onclick="submitAuth('register')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Create Cloud Account</button>
-      </div>
-
-      <!-- Forgot Password Form -->
-      <div id="containerForgot" class="space-y-3 hidden">
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Registered Email Address</label>
-          <input id="forgotEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <p class="text-[11px] text-white/50">Your password will be emailed directly to your registered inbox via Google Apps Script.</p>
-        <button id="btnForgotAction" type="button" onclick="submitAuth('forgot')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Send Password to Email</button>
-      </div>
-
-      <div id="authStatus" class="mt-3 text-xs text-center text-amber-400 min-h-4"></div>
-    </div>
-  </div>
-
-  <!-- ==================== WINDOWS 11 JAVASCRIPT SYSTEM ENGINE ==================== -->
-  <script>
-    /* System Global State */
-    const STATE = {
-      // PRE-ENTER YOUR GOOGLE APPS SCRIPT URL HERE:
-      appsScriptUrl: "<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Windows 11 CloudOS</title>
-
-  <!-- Fluent Typography: Segoe UI / Roboto Fonts matching Windows 11 Design System -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=Cascadia+Code:wght@400;600&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS & Lucide Icons -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Real Microsoft Word (.docx) Binary Parsing Engine -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-
-  <style>
-    :root {
-      --font-win: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-      --font-code: 'Cascadia Code', Consolas, monospace;
-      --win-blue: #0067c0;
-      --win-accent: #0078d4;
-    }
-    * {
-      font-family: var(--font-win);
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      box-sizing: border-box;
-    }
-    input, textarea, [contenteditable="true"], pre, code {
-      user-select: text !important;
-    }
-    /* Windows 11 Acrylic / Mica Glassmorphism */
-    .mica {
-      background: rgba(32, 32, 32, 0.82);
-      backdrop-filter: blur(36px) saturate(180%);
-      -webkit-backdrop-filter: blur(36px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    .mica-light {
-      background: rgba(243, 243, 243, 0.85);
-      backdrop-filter: blur(36px) saturate(180%);
-      -webkit-backdrop-filter: blur(36px) saturate(180%);
-      border: 1px solid rgba(0, 0, 0, 0.08);
-    }
-    .acrylic-popup {
-      background: rgba(40, 40, 40, 0.94);
-      backdrop-filter: blur(48px) saturate(200%);
-      -webkit-backdrop-filter: blur(48px) saturate(200%);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.48);
-    }
-    .taskbar-mica {
-      background: rgba(28, 28, 28, 0.80);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    /* Custom Thin Scrollbars */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(160, 160, 160, 0.35); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(160, 160, 160, 0.65); }
-
-    /* Responsive adjustments for iPad Mini 6 (744x1133 pt) & Tablets */
-    @media (min-width: 744px) and (max-width: 1133px) {
-      .win-app-icon { width: 72px; height: 82px; }
-    }
-  </style>
-</head>
-
-<body class="h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 antialiased flex flex-col relative select-none">
-
-  <!-- ==================== DESKTOP WORKSPACE ==================== -->
-  <main id="desktop" class="relative flex-1 w-full overflow-hidden bg-cover bg-center transition-all duration-700"
-        style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564');"
-        oncontextmenu="handleDesktopContextMenu(event)">
-
-    <!-- Screen Brightness Dimmer Overlay -->
-    <div id="dimmerOverlay" class="absolute inset-0 bg-black pointer-events-none z-40 transition-opacity duration-300 opacity-0"></div>
-
-    <!-- Desktop Icons Grid -->
-    <div id="desktopIcons" class="absolute inset-0 p-3 grid grid-flow-col grid-rows-[repeat(auto-fill,88px)] gap-2 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-10"></div>
-
-    <!-- Windows 11 Desktop Interactive Widgets Pane -->
-    <div id="widgetsPane" class="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none [&>*]:pointer-events-auto z-10 max-w-xs w-full">
-      <!-- Calendar & Time Widget -->
-      <div class="mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Hyderabad, India</span>
-          <i data-lucide="cloud-sun" class="w-4 h-4 text-amber-400"></i>
-        </div>
-        <div class="text-3xl font-light tracking-tight" id="widgetTime">03:02</div>
-        <div class="text-xs text-white/70" id="widgetDate">Sunday, September 20, 2026</div>
-      </div>
-
-      <!-- Real Microsoft To-Do Widget -->
-      <div class="mica rounded-2xl p-4 shadow-2xl border border-white/10 text-white">
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Microsoft To Do
-          </span>
-          <button onclick="launchApp('todo')" class="text-xs text-blue-400 hover:text-blue-300 font-semibold">+ Open</button>
-        </div>
-        <div id="widgetTodoList" class="space-y-1.5 max-h-36 overflow-y-auto text-xs"></div>
-        <div class="mt-2 pt-2 border-t border-white/10 flex gap-1">
-          <input id="widgetNewTodoInput" type="text" placeholder="Add task..." onkeydown="if(event.key==='Enter') addWidgetTodo()"
-                 class="w-full bg-white/10 border border-white/10 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-blue-400 text-white placeholder-white/40" />
-          <button onclick="addWidgetTodo()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold">+</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Windows Workspace Container -->
-    <div id="windowsContainer" class="absolute inset-0 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-20"></div>
-
-    <!-- Precision Virtual Mouse Cursor (Trackpad Controlled) -->
-    <div id="virtualCursor" class="hidden absolute w-4 h-4 -top-2 -left-2 pointer-events-none z-[9999] transition-[top,left] duration-75">
-      <svg class="w-6 h-6 text-blue-500 drop-shadow-xl" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M4 2l16 11-7.5 1.5 4.5 7.5-2.5 1.5-4.5-7.5L4 20V2z"/>
-      </svg>
-    </div>
-
-    <!-- Desktop Context Menu -->
-    <div id="contextMenu" class="hidden absolute acrylic-popup text-white rounded-xl shadow-2xl py-1.5 w-52 z-[9990] text-xs border border-white/15">
-      <div id="contextMenuItems" class="divide-y divide-white/10"></div>
-    </div>
-  </main>
-
-  <!-- ==================== DOCKED TRACKPAD (TABLETS & PHONES) ==================== -->
-  <div id="touchTrackpad" class="hidden w-full h-[20vh] bg-slate-900 border-t border-slate-700 flex flex-col z-40 transition-all select-none">
-    <div class="flex justify-between items-center px-4 py-1.5 bg-slate-800 text-xs text-slate-300">
-      <span class="flex items-center gap-1.5"><i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-blue-400"></i> Windows Precision Trackpad</span>
-      <div class="flex items-center gap-2">
-        <button onclick="toggleTrackpadFloat()" class="hover:text-white px-2 py-0.5 rounded bg-slate-700 text-[10px]">Float / Dock</button>
-        <button onclick="toggleTrackpad()" class="hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-      </div>
-    </div>
-    <div class="flex-1 flex overflow-hidden">
-      <div id="trackpadArea" class="flex-1 bg-slate-950/70 m-1 rounded-xl border border-slate-700 relative touch-none flex items-center justify-center text-slate-500 text-xs">
-        Touch & slide finger to control Windows cursor
-      </div>
-      <div class="w-28 flex flex-col gap-1 p-1">
-        <button id="trackpadLeftClick" class="flex-1 bg-slate-800 active:bg-blue-600 rounded-lg text-slate-200 font-semibold text-xs border border-slate-700">L-Click</button>
-        <button id="trackpadRightClick" class="flex-1 bg-slate-800 active:bg-blue-600 rounded-lg text-slate-200 font-semibold text-xs border border-slate-700">R-Click</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== FLOATING VIRTUAL KEYBOARD ==================== -->
-  <div id="virtualKeyboard" class="hidden fixed z-[9998] acrylic-popup text-white rounded-2xl shadow-2xl border border-white/20 p-3 flex flex-col gap-1.5 w-[94vw] max-w-xl touch-none"
-       style="bottom: 60px; left: 50%; transform: translateX(-50%);">
-    <div class="flex items-center justify-between pb-1 px-2 border-b border-white/10 cursor-move" id="kbHeader">
-      <span class="text-xs font-semibold text-white/80 flex items-center gap-1.5">
-        <i data-lucide="keyboard" class="w-3.5 h-3.5 text-blue-400"></i> Windows Touch Keyboard
-      </span>
-      <div class="flex items-center gap-1">
-        <button onclick="document.activeElement?.blur();" class="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20">Release Focus</button>
-        <button onclick="toggleVirtualKeyboard()" class="text-white/60 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-      </div>
-    </div>
-    <div id="keyboardKeys" class="flex flex-col gap-1 text-xs"></div>
-  </div>
-
-  <!-- ==================== WINDOWS 11 CENTERED TASKBAR ==================== -->
-  <footer id="taskbar" class="w-full h-12 taskbar-mica flex items-center justify-between px-3 z-40 relative select-none">
-    
-    <!-- Left: Widgets Pane Flyout Button -->
-    <div class="flex items-center">
-      <button onclick="toggleWidgetsPane()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5 text-white/80" title="Widgets">
-        <i data-lucide="cloud-sun" class="w-4 h-4 text-blue-400"></i>
-        <span class="hidden md:inline text-xs font-medium">Hyderabad 26°C</span>
-      </button>
-    </div>
-
-    <!-- Center: Centered Windows 11 Pinned & Running Apps -->
-    <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-      <!-- Windows 11 Start Button -->
-      <button onclick="toggleStartMenu()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition text-blue-400" title="Start">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M2 3h9v9H2V3zm11 0h9v9h-9V3zM2 13h9v8H2v-8zm11 0h9v8h-9v-8z"/>
-        </svg>
-      </button>
-
-      <!-- Task View (Virtual Desktops / Recent Apps) -->
-      <button onclick="toggleTaskView()" class="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition text-white/70" title="Task View">
-        <i data-lucide="layers" class="w-4 h-4"></i>
-      </button>
-
-      <!-- Pinned Taskbar Apps Grid -->
-      <div id="taskbarPinnedApps" class="flex items-center gap-1"></div>
-
-      <!-- Divider -->
-      <div class="w-px h-5 bg-white/20 mx-1"></div>
-
-      <!-- Active Running Instances List -->
-      <div id="taskbarRunningApps" class="flex items-center gap-1 max-w-[30vw] overflow-x-auto"></div>
-    </div>
-
-    <!-- Right: Windows 11 System Tray & Quick Settings Flyout -->
-    <div class="flex items-center gap-2 text-xs text-white">
-      <button onclick="toggleVirtualKeyboard()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Touch Keyboard">
-        <i data-lucide="keyboard" class="w-4 h-4"></i>
-      </button>
-
-      <button onclick="toggleTrackpad()" class="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white" title="Precision Mouse Trackpad">
-        <i data-lucide="mouse" class="w-4 h-4"></i>
-      </button>
-
-      <!-- Quick Settings Cluster (Wi-Fi, Volume, Battery) -->
-      <div onclick="toggleQuickSettings()" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex items-center gap-2 text-white/80 transition active:scale-95">
-        <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
-        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-        <i data-lucide="battery" class="w-3.5 h-3.5"></i>
-      </div>
-
-      <!-- Notification & Calendar Clock -->
-      <div onclick="toggleCalendarFlyout()" class="cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10 flex flex-col items-end leading-tight text-right text-white/90">
-        <span id="taskbarTime" class="font-semibold text-xs">03:02 AM</span>
-        <span id="taskbarDate" class="text-[10px] text-white/60">9/20/2026</span>
-      </div>
-
-      <!-- Show Desktop Stripe -->
-      <div onclick="minimizeAllWindows()" class="w-1.5 h-8 border-l border-white/20 hover:bg-white/20 cursor-pointer ml-1" title="Show Desktop"></div>
-    </div>
-  </footer>
-
-  <!-- ==================== WINDOWS 11 CENTERED START MENU ==================== -->
-  <aside id="startMenu" class="hidden absolute bottom-14 left-1/2 -translate-x-1/2 w-[92vw] max-w-xl acrylic-popup text-white rounded-2xl shadow-2xl p-6 z-50 border border-white/20">
-    <!-- Top Search Bar -->
-    <div class="relative mb-5">
-      <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-white/50"></i>
-      <input id="startSearchInput" oninput="filterStartApps(this.value)" type="text" placeholder="Type here to search apps, settings, and cloud files..."
-             class="w-full bg-white/10 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-white/40 outline-none focus:ring-1 focus:ring-blue-400" />
-    </div>
-
-    <!-- Pinned Apps Section -->
-    <div class="flex items-center justify-between mb-3 text-xs font-semibold text-white/80">
-      <span>Pinned Applications</span>
-      <button onclick="renderStartApps(true)" class="text-blue-400 hover:text-blue-300">All Apps &gt;</button>
-    </div>
-    <div id="startAppGrid" class="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-64 overflow-y-auto p-1 mb-5"></div>
-
-    <!-- Recommended Recent Documents -->
-    <div class="text-xs font-semibold text-white/80 mb-2">Recommended</div>
-    <div id="startRecommendedList" class="grid grid-cols-2 gap-2 text-xs mb-5">
-      <div class="p-2 rounded-xl hover:bg-white/10 flex items-center gap-2 cursor-pointer" onclick="launchApp('word')">
-        <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
-        <div class="truncate"><div class="font-medium truncate">Document.docx</div><div class="text-[10px] text-white/50">Google Drive</div></div>
-      </div>
-      <div class="p-2 rounded-xl hover:bg-white/10 flex items-center gap-2 cursor-pointer" onclick="launchApp('vscode')">
-        <i data-lucide="code" class="w-4 h-4 text-blue-500"></i>
-        <div class="truncate"><div class="font-medium truncate">index.html</div><div class="text-[10px] text-white/50">Code Studio</div></div>
-      </div>
-    </div>
-
-    <!-- User Profile & Power Buttons Footer -->
-    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-md" id="userAvatarLetter">U</div>
-        <div>
-          <div class="font-semibold text-white leading-none" id="startUsername">Guest</div>
-          <div class="text-[10px] text-white/50" id="startEmail">Cloud Mode</div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button onclick="handleLogout()" class="p-2 rounded-xl hover:bg-red-500/20 text-red-400 transition" title="Sign Out">
-          <i data-lucide="log-out" class="w-4 h-4"></i>
+        <button id="btnActionLogin" type="button" onclick="doAuthAction('login')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">
+          Sign In to Windows 11
         </button>
       </div>
-    </div>
-  </aside>
 
-  <!-- ==================== WINDOWS 11 QUICK SETTINGS FLYOUT ==================== -->
-  <aside id="quickSettingsFlyout" class="hidden absolute bottom-14 right-4 w-80 acrylic-popup text-white rounded-2xl p-4 shadow-2xl z-50 border border-white/20 space-y-4">
-    <div class="grid grid-cols-3 gap-2">
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15 active:scale-95" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="wifi" class="w-4 h-4"></i><span class="text-[11px]">Wi-Fi</span>
-      </div>
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15 active:scale-95" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="bluetooth" class="w-4 h-4"></i><span class="text-[11px]">Bluetooth</span>
-      </div>
-      <div class="bg-white/10 p-2.5 rounded-xl flex flex-col items-center gap-1 cursor-pointer hover:bg-white/15 active:scale-95" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="plane" class="w-4 h-4"></i><span class="text-[11px]">Airplane</span>
-      </div>
-    </div>
-    <div class="space-y-2 text-xs">
-      <div>
-        <div class="flex justify-between mb-1 text-white/70"><span>Screen Dimmer</span><i data-lucide="sun" class="w-3.5 h-3.5"></i></div>
-        <input type="range" min="0" max="85" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-blue-500 cursor-pointer" />
-      </div>
-      <div>
-        <div class="flex justify-between mb-1 text-white/70"><span>Volume</span><i data-lucide="volume-2" class="w-3.5 h-3.5"></i></div>
-        <input type="range" min="0" max="100" value="80" class="w-full accent-blue-500 cursor-pointer" />
-      </div>
-    </div>
-  </aside>
-
-  <!-- ==================== AUTH GATE MODAL ==================== -->
-  <div id="authGate" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-    <div class="acrylic-popup border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md text-white shadow-2xl">
-      <div class="flex items-center gap-3 mb-5">
-        <div class="p-3 bg-blue-600 rounded-2xl shadow-lg">
-          <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2 3h9v9H2V3zm11 0h9v9h-9V3zM2 13h9v8H2v-8zm11 0h9v8h-9v-8z"/>
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight">Windows 11 CloudOS</h1>
-          <p class="text-xs text-white/60">Zero-device footprint cloud operating system</p>
-        </div>
-      </div>
-
-      <!-- Backend Script Setup Link -->
-      <div class="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs space-y-1">
-        <label class="font-medium text-blue-300">Google Apps Script Web App Endpoint:</label>
-        <input id="cfgAppsScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"
-               class="w-full bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" />
-      </div>
-
-      <!-- Tab Switcher -->
-      <div class="flex rounded-xl bg-white/10 p-1 mb-4 text-xs">
-        <button id="authTabLogin" type="button" onclick="switchAuthTab('login')" class="flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition">Sign In</button>
-        <button id="authTabRegister" type="button" onclick="switchAuthTab('register')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Register</button>
-        <button id="authTabForgot" type="button" onclick="switchAuthTab('forgot')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Reset</button>
-      </div>
-
-      <!-- Sign In Form -->
-      <div id="containerLogin" class="space-y-3">
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Username</label>
-          <input id="loginUser" type="text" placeholder="Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <div>
-          <label class="text-xs text-white/70 block mb-1">Password</label>
-          <input id="loginPass" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        </div>
-        <button id="btnLoginAction" type="button" onclick="submitAuth('login')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Sign In to Windows 11</button>
-      </div>
-
-      <!-- Register Form -->
-      <div id="containerRegister" class="space-y-3 hidden">
+      <!-- Tab 2: Register Form -->
+      <div id="paneRegister" class="auth-tab-hidden space-y-3">
         <div>
           <label class="text-xs text-white/70 block mb-1">Desired Username</label>
-          <input id="regUser" type="text" placeholder="Enter username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+          <input id="regUsername" type="text" placeholder="Choose username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
         </div>
         <div>
-          <label class="text-xs text-white/70 block mb-1">Email Address (For Password Recovery)</label>
+          <label class="text-xs text-white/70 block mb-1">Email (For Password Recovery)</label>
           <input id="regEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
         </div>
         <div>
-          <label class="text-xs text-white/70 block mb-1">Create Password</label>
-          <input id="regPass" type="password" placeholder="Create password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+          <label class="text-xs text-white/70 block mb-1">Password</label>
+          <input id="regPassword" type="password" placeholder="Create password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
         </div>
-        <button id="btnRegisterAction" type="button" onclick="submitAuth('register')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Create Cloud Account</button>
+        <button id="btnActionRegister" type="button" onclick="doAuthAction('register')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">
+          Create Cloud Account & Drive Folder
+        </button>
       </div>
 
-      <!-- Forgot Password Form -->
-      <div id="containerForgot" class="space-y-3 hidden">
+      <!-- Tab 3: Forgot Password Form -->
+      <div id="paneForgot" class="auth-tab-hidden space-y-3">
         <div>
-          <label class="text-xs text-white/70 block mb-1">Registered Email Address</label>
+          <label class="text-xs text-white/70 block mb-1">Registered Email</label>
           <input id="forgotEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
         </div>
-        <p class="text-[11px] text-white/50">Your password will be emailed directly to your registered inbox via Google Apps Script.</p>
-        <button id="btnForgotAction" type="button" onclick="submitAuth('forgot')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Send Password to Email</button>
+        <p class="text-[11px] text-white/50">Your password will be retrieved and emailed to your inbox via Google Apps Script.</p>
+        <button id="btnActionForgot" type="button" onclick="doAuthAction('forgot')" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">
+          Email My Password
+        </button>
       </div>
 
-      <div id="authStatus" class="mt-3 text-xs text-center text-amber-400 min-h-4"></div>
+      <div id="authStatus" class="mt-3 text-xs text-center text-amber-400 min-h-5"></div>
     </div>
   </div>
 
-  <!-- ==================== WINDOWS 11 JAVASCRIPT SYSTEM ENGINE ==================== -->
+  <!-- ==================== SCRIPT ENGINE ==================== -->
   <script>
-    /* System Global State */
+    /* System State */
     const STATE = {
-      // PRE-ENTER YOUR GOOGLE APPS SCRIPT URL HERE:
-      appsScriptUrl: "",
+      appsScriptUrl: "https://script.google.com/macros/s/AKfycbxCwpJad_RjrkWSU9vfxmXrAVmk_3ixIz1LoA8xoHkshvxF7ERR35MMw7yw7eVNWYmowQ/exec",
       currentUser: null,
       windows: [],
       activeWinId: null,
       installedApps: [],
       todos: [
         { id: '1', Task: 'Sync project files with Google Drive', Completed: 'false' },
-        { id: '2', Task: 'Review WordPad document changes', Completed: 'true' }
-      ],
-      driveFiles: [],
-      bookmarks: [
-        { title: 'Bing', url: 'https://www.bing.com' },
-        { title: 'Wikipedia', url: 'https://en.wikipedia.org' }
+        { id: '2', Task: 'Edit document in WordPad', Completed: 'true' }
       ],
       virtualMouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-      isShift: false,
-      historyStack: []
+      isShift: false
     };
 
-    /* Windows 11 Applications Catalog */
+    /* Windows 11 Built-in Apps */
     const WIN11_APPS = {
       explorer: { name: 'File Explorer', icon: 'folder', color: 'text-amber-400' },
       edge: { name: 'Microsoft Edge', icon: 'globe', color: 'text-cyan-400' },
-      word: { name: 'WordPad Docs', icon: 'file-text', color: 'text-blue-500' },
-      vscode: { name: 'Visual Studio Code', icon: 'code', color: 'text-blue-400' },
-      terminal: { name: 'Terminal (PowerShell)', icon: 'terminal', color: 'text-purple-400' },
+      word: { name: 'WordPad', icon: 'file-text', color: 'text-blue-500' },
+      vscode: { name: 'VS Code', icon: 'code', color: 'text-blue-400' },
+      terminal: { name: 'Terminal', icon: 'terminal', color: 'text-purple-400' },
       store: { name: 'Microsoft Store', icon: 'shopping-bag', color: 'text-sky-400' },
-      todo: { name: 'Microsoft To Do', icon: 'check-square', color: 'text-teal-400' },
-      mail: { name: 'Outlook Mail', icon: 'mail', color: 'text-blue-400' },
+      todo: { name: 'To Do', icon: 'check-square', color: 'text-teal-400' },
+      mail: { name: 'Outlook', icon: 'mail', color: 'text-blue-400' },
       photos: { name: 'Photos', icon: 'image', color: 'text-pink-400' },
       media: { name: 'Media Player', icon: 'play-circle', color: 'text-orange-400' },
       youtube: { name: 'YouTube', icon: 'play-square', color: 'text-red-500' },
-      scanner: { name: 'Camera Scanner', icon: 'scan-line', color: 'text-emerald-400' },
+      scanner: { name: 'Doc Scanner', icon: 'scan-line', color: 'text-emerald-400' },
       calculator: { name: 'Calculator', icon: 'calculator', color: 'text-slate-300' },
       settings: { name: 'Settings', icon: 'settings', color: 'text-slate-400' }
     };
 
-    /* System Boot */
+    /* Boot Initializer */
     window.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       initClocks();
@@ -802,12 +381,12 @@
       initVirtualKeyboard();
       initTrackpad();
       renderWidgetTodos();
-      checkSession();
+      checkSavedSession();
     });
 
     /* Live Clocks */
     function initClocks() {
-      const tick = () => {
+      const update = () => {
         const d = new Date();
         const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const dateStr = d.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: 'numeric' });
@@ -817,12 +396,88 @@
         document.getElementById('widgetTime').innerText = t;
         document.getElementById('widgetDate').innerText = dateLong;
       };
-      tick();
-      setInterval(tick, 1000);
+      update();
+      setInterval(update, 1000);
     }
 
-    /* Auth & Session State */
-    function checkSession() {
+    /* Auth Tab Switching */
+    function activateAuthTab(tab) {
+      document.getElementById('paneLogin').className = (tab === 'login') ? 'auth-tab-visible space-y-3' : 'auth-tab-hidden space-y-3';
+      document.getElementById('paneRegister').className = (tab === 'register') ? 'auth-tab-visible space-y-3' : 'auth-tab-hidden space-y-3';
+      document.getElementById('paneForgot').className = (tab === 'forgot') ? 'auth-tab-visible space-y-3' : 'auth-tab-hidden space-y-3';
+
+      ['Login', 'Register', 'Forgot'].forEach(t => {
+        const btn = document.getElementById('tabBtn' + t);
+        if (t.toLowerCase() === tab) {
+          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition';
+        } else {
+          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition';
+        }
+      });
+      document.getElementById('authStatus').innerText = '';
+    }
+
+    /* Dual-Mode Network Call (CORS-Safe) */
+    async function apiCall(action, payload = {}) {
+      const inputUrl = document.getElementById('cfgAppsScriptUrl').value.trim();
+      const url = inputUrl || STATE.appsScriptUrl;
+      if (!url) throw new Error("Please enter your Google Apps Script Web App URL.");
+      localStorage.setItem('cloudos_win11_script_url', url);
+      STATE.appsScriptUrl = url;
+
+      // Method 1: Send as text/plain to bypass CORS OPTIONS preflight
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, ...payload })
+        });
+        return await res.json();
+      } catch (err) {
+        // Method 2 Fallback: Encode as URL GET parameters (100% CORS-Proof on all devices)
+        const params = new URLSearchParams({ action, ...payload });
+        const res = await fetch(url + '?' + params.toString());
+        return await res.json();
+      }
+    }
+
+    /* Auth Execution Handler */
+    async function doAuthAction(type) {
+      const status = document.getElementById('authStatus');
+      status.innerText = "Connecting to Windows Cloud Service...";
+
+      try {
+        if (type === 'login') {
+          const u = document.getElementById('loginUsername').value.trim();
+          const p = document.getElementById('loginPassword').value.trim();
+          if (!u || !p) { status.innerText = "Please enter username and password."; return; }
+          const res = await apiCall('login', { username: u, password: p });
+          if (res.status === 'success') {
+            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
+            checkSavedSession();
+          } else { status.innerText = res.message; }
+        } else if (type === 'register') {
+          const u = document.getElementById('regUsername').value.trim();
+          const e = document.getElementById('regEmail').value.trim();
+          const p = document.getElementById('regPassword').value.trim();
+          if (!u || !e || !p) { status.innerText = "All registration fields are required."; return; }
+          const res = await apiCall('register', { username: u, email: e, password: p });
+          if (res.status === 'success') {
+            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
+            checkSavedSession();
+          } else { status.innerText = res.message; }
+        } else if (type === 'forgot') {
+          const e = document.getElementById('forgotEmail').value.trim();
+          if (!e) { status.innerText = "Please enter your registered email address."; return; }
+          const res = await apiCall('forgot_password', { email: e });
+          status.innerText = res.message;
+        }
+      } catch (err) {
+        status.innerText = "Connection Error: " + err.message;
+      }
+    }
+
+    function checkSavedSession() {
       const savedUser = sessionStorage.getItem('cloudos_win11_user');
       const savedScript = localStorage.getItem('cloudos_win11_script_url') || STATE.appsScriptUrl;
       if (savedScript) {
@@ -839,93 +494,24 @@
       }
     }
 
-    function switchAuthTab(tab) {
-      document.getElementById('containerLogin').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('containerRegister').classList.toggle('hidden', tab !== 'register');
-      document.getElementById('containerForgot').classList.toggle('hidden', tab !== 'forgot');
-
-      const tabs = ['Login', 'Register', 'Forgot'];
-      tabs.forEach(t => {
-        const btn = document.getElementById('authTab' + t);
-        if (t.toLowerCase() === tab) {
-          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition';
-        } else {
-          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition';
-        }
-      });
-      document.getElementById('authStatus').innerText = '';
-    }
-
-    async function apiCall(action, payload = {}) {
-      const url = document.getElementById('cfgAppsScriptUrl').value.trim() || STATE.appsScriptUrl;
-      if (!url) throw new Error("Please configure your Google Apps Script Web App URL first.");
-      localStorage.setItem('cloudos_win11_script_url', url);
-      STATE.appsScriptUrl = url;
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, ...payload })
-      });
-      return await res.json();
-    }
-
-    async function submitAuth(type) {
-      const status = document.getElementById('authStatus');
-      status.innerText = "Connecting to Windows Cloud Service...";
-
-      try {
-        if (type === 'login') {
-          const u = document.getElementById('loginUser').value.trim();
-          const p = document.getElementById('loginPass').value.trim();
-          if (!u || !p) { status.innerText = "Please enter username and password."; return; }
-          const res = await apiCall('login', { username: u, password: p });
-          if (res.status === 'success') {
-            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
-            checkSession();
-          } else { status.innerText = res.message; }
-        } else if (type === 'register') {
-          const u = document.getElementById('regUser').value.trim();
-          const e = document.getElementById('regEmail').value.trim();
-          const p = document.getElementById('regPass').value.trim();
-          if (!u || !e || !p) { status.innerText = "All registration fields are required."; return; }
-          const res = await apiCall('register', { username: u, email: e, password: p });
-          if (res.status === 'success') {
-            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
-            checkSession();
-          } else { status.innerText = res.message; }
-        } else if (type === 'forgot') {
-          const e = document.getElementById('forgotEmail').value.trim();
-          if (!e) { status.innerText = "Please enter your registered email."; return; }
-          const res = await apiCall('forgot_password', { email: e });
-          status.innerText = res.message;
-        }
-      } catch (err) {
-        status.innerText = "Error: " + err.message;
-      }
-    }
-
     async function syncCloudData() {
       if (!STATE.currentUser) return;
       try {
-        const [todosRes, appsRes, driveRes] = await Promise.all([
+        const [todosRes, appsRes] = await Promise.all([
           apiCall('get_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks' }),
-          apiCall('get_apps', { username: STATE.currentUser.username }),
-          apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId })
+          apiCall('get_apps', { username: STATE.currentUser.username })
         ]);
         if (todosRes.data && todosRes.data.length) { STATE.todos = todosRes.data; renderWidgetTodos(); }
         if (appsRes.apps) { STATE.installedApps = appsRes.apps; renderDesktopIcons(); renderStartApps(); }
-        if (driveRes.files) { STATE.driveFiles = driveRes.files; }
       } catch (e) {
-        console.warn("Cloud sync notice:", e);
+        console.warn("Cloud sync:", e);
       }
     }
 
-    /* Desktop Icons Rendering */
+    /* Desktop Icons */
     function renderDesktopIcons() {
       const container = document.getElementById('desktopIcons');
       container.innerHTML = '';
-
       const all = [
         ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
         ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
@@ -933,9 +519,9 @@
 
       all.forEach(app => {
         const div = document.createElement('div');
-        div.className = "win-app-icon flex flex-col items-center justify-center p-2 rounded-xl hover:bg-white/10 cursor-pointer text-white transition active:scale-95 text-center";
+        div.className = "win-desktop-icon flex flex-col items-center justify-center p-2 rounded-xl hover:bg-white/10 cursor-pointer text-white transition active:scale-95 text-center";
         div.innerHTML = `
-          <div class="w-10 h-10 rounded-xl mica flex items-center justify-center shadow-lg mb-1 ${app.color || 'text-blue-400'}">
+          <div class="w-10 h-10 rounded-xl win-mica flex items-center justify-center shadow-lg mb-1 ${app.color || 'text-blue-400'}">
             <i data-lucide="${app.icon || 'layout-grid'}" class="w-6 h-6"></i>
           </div>
           <span class="text-[11px] font-normal tracking-tight drop-shadow truncate w-full text-slate-100">${app.name}</span>
@@ -947,20 +533,19 @@
       renderStartApps();
     }
 
-    /* Start Menu Apps Grid */
-    function renderStartApps(all = false) {
+    /* Start Menu */
+    function renderStartApps() {
       const grid = document.getElementById('startAppGrid');
       grid.innerHTML = '';
       const list = [
         ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
         ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
       ];
-
       list.forEach(app => {
         const item = document.createElement('button');
         item.className = "flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center";
         item.innerHTML = `
-          <div class="w-9 h-9 rounded-xl mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
+          <div class="w-9 h-9 rounded-xl win-mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
             <i data-lucide="${app.icon || 'layout-grid'}" class="w-5 h-5"></i>
           </div>
           <span class="text-[11px] truncate w-full text-white/90">${app.name}</span>
@@ -983,7 +568,7 @@
         const item = document.createElement('button');
         item.className = "flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center";
         item.innerHTML = `
-          <div class="w-9 h-9 rounded-xl mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
+          <div class="w-9 h-9 rounded-xl win-mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
             <i data-lucide="${app.icon || 'layout-grid'}" class="w-5 h-5"></i>
           </div>
           <span class="text-[11px] truncate w-full text-white/90">${app.name}</span>
@@ -994,7 +579,7 @@
       lucide.createIcons();
     }
 
-    /* Windows 11 Taskbar Centered Pinned Apps & Running State */
+    /* Taskbar */
     function renderTaskbar() {
       const pinnedContainer = document.getElementById('taskbarPinnedApps');
       pinnedContainer.innerHTML = '';
@@ -1013,7 +598,6 @@
         pinnedContainer.appendChild(btn);
       });
 
-      // Render Dynamic Running Instances
       const runningContainer = document.getElementById('taskbarRunningApps');
       runningContainer.innerHTML = '';
       STATE.windows.forEach(w => {
@@ -1039,7 +623,7 @@
       lucide.createIcons();
     }
 
-    /* Windows 11 Window Manager */
+    /* Window Manager */
     function launchApp(appKey, customMeta = null) {
       const winId = 'win_' + Date.now();
       const isMobile = window.innerWidth < 768;
@@ -1069,36 +653,24 @@
       const container = document.getElementById('windowsContainer');
       const winEl = document.createElement('div');
       winEl.id = win.id;
-      winEl.className = `absolute rounded-xl acrylic-popup text-white flex flex-col shadow-2xl border border-white/15 overflow-hidden transition-[transform,opacity] duration-150 ${win.maximized ? 'inset-0 !rounded-none !border-0' : ''}`;
+      winEl.className = `absolute rounded-xl win-acrylic text-white flex flex-col shadow-2xl border border-white/15 overflow-hidden transition-[transform,opacity] duration-150 ${win.maximized ? 'inset-0 !rounded-none !border-0' : ''}`;
       winEl.style.left = win.maximized ? '0px' : win.x + 'px';
       winEl.style.top = win.maximized ? '0px' : win.y + 'px';
       winEl.style.width = win.maximized ? '100vw' : win.w + 'px';
       winEl.style.height = win.maximized ? 'calc(100vh - 48px)' : win.h + 'px';
 
       winEl.innerHTML = `
-        <!-- Windows 11 Fluent Titlebar -->
         <div class="h-9 bg-black/40 border-b border-white/10 px-3 flex items-center justify-between cursor-move" onpointerdown="startWinDrag(event, '${win.id}')">
           <div class="flex items-center gap-2">
-            <button onclick="windowAppBack('${win.id}')" title="Back" class="p-1 rounded-md hover:bg-white/10 text-white/70 hover:text-white">
-              <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
-            </button>
             <i data-lucide="${win.icon}" class="w-3.5 h-3.5 text-blue-400"></i>
             <span class="text-xs font-normal text-white/90">${win.title}</span>
           </div>
-          <!-- Windows 11 Minimize, Maximize/Restore, Close Controls -->
           <div class="flex items-center">
-            <button onclick="minimizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Minimize">
-              <i data-lucide="minus" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="maximizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Maximize / Restore">
-              <i data-lucide="square" class="w-3 h-3"></i>
-            </button>
-            <button onclick="closeWindow('${win.id}')" class="h-9 px-3 hover:bg-red-600 text-white/70 hover:text-white" title="Close">
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
-            </button>
+            <button onclick="minimizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Minimize"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
+            <button onclick="maximizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Maximize"><i data-lucide="square" class="w-3 h-3"></i></button>
+            <button onclick="closeWindow('${win.id}')" class="h-9 px-3 hover:bg-red-600 text-white/70 hover:text-white" title="Close"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
           </div>
         </div>
-        <!-- Window Content Viewport -->
         <div class="flex-1 overflow-auto bg-slate-950/85 p-3 relative flex flex-col" id="${win.id}_body">
           ${getAppContent(win.appKey, customMeta, win.id)}
         </div>
@@ -1147,7 +719,6 @@
                 <button onclick="document.execCommand('justifyLeft')" class="px-2 py-1 rounded bg-white shadow-sm">Left</button>
                 <button onclick="document.execCommand('justifyCenter')" class="px-2 py-1 rounded bg-white shadow-sm">Center</button>
                 <button onclick="document.execCommand('justifyFull')" class="px-2 py-1 rounded bg-white shadow-sm font-semibold">Justify</button>
-                <input type="color" onchange="document.execCommand('foreColor', false, this.value)" class="w-6 h-6 p-0 border-0 rounded cursor-pointer" />
                 <label class="px-3 py-1 rounded bg-blue-600 text-white cursor-pointer hover:bg-blue-500 font-medium">
                   Open .docx <input type="file" accept=".docx" class="hidden" onchange="parseDocx(event, '${winId}')" />
                 </label>
@@ -1155,8 +726,8 @@
                 <button onclick="downloadWordDoc('${winId}')" class="px-3 py-1 rounded bg-slate-800 text-white hover:bg-slate-700 font-medium">Download</button>
               </div>
               <div id="${winId}_word_body" contenteditable="true" class="flex-1 p-6 overflow-y-auto focus:outline-none text-sm leading-relaxed" style="min-height: 200px;">
-                <h1 class="text-2xl font-bold mb-2">Windows 11 WordPad</h1>
-                <p>Edit documents natively with rich formatting. Open Microsoft Word .docx files or save directly to Google Drive.</p>
+                <h1 class="text-2xl font-bold mb-2">Windows WordPad</h1>
+                <p>Welcome to WordPad. You can open Microsoft Word .docx files or save directly to Google Drive.</p>
               </div>
             </div>`;
 
@@ -1177,7 +748,7 @@
 <html>
 <body style="font-family:'Segoe UI',sans-serif;text-align:center;padding:40px;background:#18181b;color:#fff;">
   <h2>Visual Studio Code on Windows 11</h2>
-  <p>Live sandboxed code runner.</p>
+  <button onclick="alert('Running live inside sandbox!')" style="padding:10px 20px;border-radius:8px;background:#0067c0;color:#fff;border:0;">Execute</button>
 </body>
 </html></textarea>
                 <iframe id="${winId}_code_preview" class="w-full h-full bg-white rounded-lg border-0"></iframe>
@@ -1188,9 +759,6 @@
           return `
             <div class="flex flex-col h-full gap-2 text-xs">
               <div class="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/10">
-                <button onclick="browserNav('${winId}', 'back')" class="p-1 hover:bg-white/10 rounded"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-                <button onclick="browserNav('${winId}', 'forward')" class="p-1 hover:bg-white/10 rounded"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
-                <button onclick="browserNav('${winId}', 'refresh')" class="p-1 hover:bg-white/10 rounded"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
                 <input id="${winId}_browser_url" type="text" value="https://en.wikipedia.org" onkeydown="if(event.key==='Enter') navigateBrowser('${winId}')"
                        class="flex-1 bg-black/40 border border-white/10 rounded-md px-3 py-1 text-white outline-none focus:border-blue-500" />
                 <button onclick="navigateBrowser('${winId}')" class="px-3 py-1 bg-blue-600 text-white rounded-md font-medium">Go</button>
@@ -1200,36 +768,21 @@
               </div>
             </div>`;
 
-        case 'terminal':
-          return `
-            <div class="flex flex-col h-full bg-black text-slate-100 font-mono p-3 rounded-lg text-xs overflow-hidden">
-              <div id="${winId}_term_out" class="flex-1 overflow-y-auto space-y-1">
-                <div>Windows PowerShell</div>
-                <div>Copyright (C) Microsoft Corporation. All rights reserved.</div>
-                <div class="text-blue-400">CloudOS Drive Storage Connected. Type 'help' for commands.</div>
-              </div>
-              <div class="flex items-center gap-1 pt-2 border-t border-white/10">
-                <span class="text-emerald-400">PS C:\\Users\\CloudOS&gt;</span>
-                <input id="${winId}_term_in" type="text" onkeydown="if(event.key==='Enter') runPowerShellCmd(this, '${winId}')"
-                       class="flex-1 bg-transparent text-white outline-none" autofocus />
-              </div>
-            </div>`;
-
         case 'store':
           return `
             <div class="p-4 space-y-4 max-w-lg mx-auto text-xs">
-              <div class="text-sm font-semibold text-white">Microsoft Store & App Deployment</div>
+              <div class="text-sm font-semibold text-white">Microsoft Store & App Installer</div>
               <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="font-medium text-blue-400">Option 1: Deploy from Web App URL / PWA</div>
+                <div class="font-medium text-blue-400">Option 1: Deploy Web App / PWA by URL</div>
                 <input id="${winId}_store_url" type="url" placeholder="https://example.com" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_store_name_url" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
+                <input id="${winId}_store_name_url" type="text" placeholder="App Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
                 <button onclick="installStoreUrl('${winId}')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Install Web App</button>
               </div>
               <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
                 <div class="font-medium text-emerald-400">Option 2: Deploy from Code Upload (.html, .js)</div>
-                <input id="${winId}_store_name_file" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
+                <input id="${winId}_store_name_file" type="text" placeholder="App Name" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
                 <input id="${winId}_store_file" type="file" accept=".html,.js,.txt" class="text-white/70" />
-                <button onclick="installStoreCode('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold text-white">Upload Code & Install</button>
+                <button onclick="installStoreCode('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold text-white">Upload & Install</button>
               </div>
             </div>`;
 
@@ -1244,23 +797,11 @@
               <div id="${winId}_todo_list" class="flex-1 overflow-y-auto space-y-2"></div>
             </div>`;
 
-        case 'mail':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="text-sm font-semibold text-white">New Mail Message</div>
-                <input id="${winId}_mail_to" type="email" placeholder="To: recipient@example.com" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none" />
-                <input id="${winId}_mail_sub" type="text" placeholder="Subject" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none" />
-                <textarea id="${winId}_mail_body" rows="6" placeholder="Write message..." class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none resize-none"></textarea>
-                <button onclick="sendMailMessage('${winId}')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Send Message via Outlook</button>
-              </div>
-            </div>`;
-
         case 'youtube':
           return `
             <div class="flex flex-col h-full gap-2 text-xs">
               <div class="flex gap-2">
-                <input id="${winId}_yt_input" type="text" placeholder="Paste YouTube link or Video ID (Ad-Free Player)..."
+                <input id="${winId}_yt_input" type="text" placeholder="Paste YouTube link or Video ID..."
                        class="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white outline-none" />
                 <button onclick="loadYouTubeVideo('${winId}')" class="px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg font-medium text-white">Play</button>
               </div>
@@ -1273,31 +814,14 @@
           return `
             <div class="flex flex-col h-full gap-3 text-xs">
               <div class="flex flex-wrap gap-2 items-center justify-between">
-                <div class="flex gap-2">
-                  <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium cursor-pointer">
-                    Capture / Select Image <input type="file" accept="image/*" class="hidden" onchange="processScanFile(event, '${winId}')" />
-                  </label>
-                  <button onclick="downloadScanDoc('${winId}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Download Scanned Doc</button>
-                </div>
-                <div class="flex gap-3 items-center text-white/80">
-                  <span>Contrast: <input id="${winId}_contrast" type="range" min="50" max="250" value="140" oninput="applyScanCanvasFilter('${winId}')" /></span>
-                  <span>Brightness: <input id="${winId}_bright" type="range" min="50" max="200" value="110" oninput="applyScanCanvasFilter('${winId}')" /></span>
-                </div>
+                <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium cursor-pointer">
+                  Select Document Image <input type="file" accept="image/*" class="hidden" onchange="processScanFile(event, '${winId}')" />
+                </label>
+                <button onclick="downloadScanDoc('${winId}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Download Scanned Doc</button>
               </div>
               <div class="flex-1 bg-black/40 rounded-lg overflow-hidden flex items-center justify-center border border-white/10 p-2">
                 <canvas id="${winId}_scan_canvas" class="max-h-full max-w-full rounded shadow-xl"></canvas>
               </div>
-            </div>`;
-
-        case 'media':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs text-center justify-center items-center p-6">
-              <div class="w-28 h-28 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-xl mb-3">
-                <i data-lucide="music" class="w-12 h-12 text-white"></i>
-              </div>
-              <div class="text-base font-semibold text-white">Windows Media Player</div>
-              <input type="file" accept="audio/*,video/*" onchange="loadMediaAsset(event, '${winId}')" class="text-xs text-white/70" />
-              <video id="${winId}_media_player" controls class="w-full max-w-md mt-3 rounded-lg hidden"></video>
             </div>`;
 
         case 'calculator':
@@ -1330,28 +854,21 @@
             <div class="p-4 max-w-xl mx-auto space-y-4 text-xs">
               <div class="text-sm font-semibold text-white">Windows Settings</div>
               <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                <div class="font-medium text-white/80">Personalization (Wallpaper)</div>
+                <div class="font-medium text-white/80">Desktop Wallpaper</div>
                 <div class="flex gap-2">
                   <button onclick="changeWallpaper('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Bloom Dark</button>
                   <button onclick="changeWallpaper('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Landscape</button>
-                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Mountain</button>
                 </div>
-              </div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                <div class="font-medium text-white/80">Accounts & Security</div>
-                <input id="${winId}_old_pass" type="password" placeholder="Current Password" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_new_pass" type="password" placeholder="New Password" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <button onclick="updateAccountPassword('${winId}')" class="px-4 py-1.5 bg-blue-600 rounded-lg text-white font-medium">Update Password</button>
               </div>
               <button onclick="handleLogout()" class="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-semibold">Sign Out of Windows</button>
             </div>`;
 
         default:
-          return `<div class="p-4 text-xs text-white/70">Application initialized.</div>`;
+          return `<div class="p-4 text-xs text-white/70">App ready.</div>`;
       }
     }
 
-    /* Drive Files Operations */
+    /* Drive Files */
     async function refreshDriveView(winId) {
       if (!STATE.currentUser) return alert("Please sign in first.");
       const listEl = document.getElementById(winId + '_drive_list');
@@ -1415,7 +932,7 @@
       } catch (e) { alert(e.message); }
     }
 
-    /* WordPad (.docx) Parsing & Saving */
+    /* WordPad / Mammoth */
     function parseDocx(event, winId) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1452,7 +969,7 @@
       a.click();
     }
 
-    /* To Do Task Operations */
+    /* To Do */
     function renderWidgetTodos() {
       const list = document.getElementById('widgetTodoList');
       list.innerHTML = '';
@@ -1460,7 +977,7 @@
         const item = document.createElement('div');
         item.className = "flex items-center gap-2";
         item.innerHTML = `
-          <input type="checkbox" ${t.Completed === 'true' ? 'checked' : ''} onchange="toggleTodoState(${idx})" class="rounded accent-blue-600" />
+          <input type="checkbox" ${t.Completed === 'true' ? 'checked' : ''} onchange="toggleTodoState(${idx})" class="rounded accent-blue-600 cursor-pointer" />
           <span class="${t.Completed === 'true' ? 'line-through text-slate-400' : 'text-slate-100'} truncate">${t.Task}</span>
         `;
         list.appendChild(item);
@@ -1492,7 +1009,7 @@
       if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
     }
 
-    /* VS Code Studio Actions */
+    /* VS Code */
     function runVsCode(winId) {
       const code = document.getElementById(winId + '_code_editor').value;
       document.getElementById(winId + '_code_preview').srcdoc = code;
@@ -1510,14 +1027,14 @@
       alert("Code saved to Google Drive!");
     }
 
-    /* Microsoft Store App Installer */
+    /* Store Installer */
     async function installStoreUrl(winId) {
       const url = document.getElementById(winId + '_store_url').value.trim();
       const name = document.getElementById(winId + '_store_name_url').value.trim() || 'Web App';
       if (!url) return alert("Enter URL");
       await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'globe', type: 'url', codeOrUrl: url });
       syncCloudData();
-      alert("Application installed!");
+      alert("App installed!");
     }
 
     async function installStoreCode(winId) {
@@ -1528,12 +1045,12 @@
       reader.onload = async function(e) {
         await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'code', type: 'code', codeOrUrl: e.target.result });
         syncCloudData();
-        alert("App uploaded & installed!");
+        alert("App installed!");
       };
       reader.readAsText(fileInput.files[0]);
     }
 
-    /* Scanner Filter & Download */
+    /* Scanner */
     function processScanFile(e, winId) {
       const file = e.target.files[0];
       if (!file) return;
@@ -1542,17 +1059,11 @@
         const canvas = document.getElementById(winId + '_scan_canvas');
         canvas.width = img.width;
         canvas.height = img.height;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        applyScanCanvasFilter(winId);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.style.filter = "contrast(140%) brightness(110%) grayscale(100%)";
       };
       img.src = URL.createObjectURL(file);
-    }
-
-    function applyScanCanvasFilter(winId) {
-      const canvas = document.getElementById(winId + '_scan_canvas');
-      const c = document.getElementById(winId + '_contrast').value;
-      const b = document.getElementById(winId + '_bright').value;
-      canvas.style.filter = `contrast(${c}\%) brightness(${b}%) grayscale(100%)`;
     }
 
     function downloadScanDoc(winId) {
@@ -1563,16 +1074,7 @@
       a.click();
     }
 
-    /* Media Playback */
-    function loadMediaAsset(e, winId) {
-      const file = e.target.files[0];
-      if (file) {
-        const player = document.getElementById(winId + '_media_player');
-        player.classList.remove('hidden');
-        player.src = URL.createObjectURL(file);
-      }
-    }
-
+    /* YouTube & Browser */
     function loadYouTubeVideo(winId) {
       const val = document.getElementById(winId + '_yt_input').value.trim();
       let id = val;
@@ -1581,53 +1083,9 @@
       document.getElementById(winId + '_yt_frame').src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
     }
 
-    /* Browser Navigation */
     function navigateBrowser(winId) {
       const url = document.getElementById(winId + '_browser_url').value.trim();
       document.getElementById(winId + '_browser_frame').src = url.startsWith('http') ? url : 'https://' + url;
-    }
-
-    function browserNav(winId, action) {
-      const f = document.getElementById(winId + '_browser_frame');
-      if (action === 'refresh') f.src = f.src;
-    }
-
-    /* PowerShell Runner */
-    function runPowerShellCmd(input, winId) {
-      const cmd = input.value.trim();
-      input.value = '';
-      const out = document.getElementById(winId + '_term_out');
-      const line = document.createElement('div');
-      line.innerText = "PS C:\\Users\\CloudOS> " + cmd;
-      out.appendChild(line);
-
-      let resp = "";
-      if (cmd === 'help') resp = "Commands: help, cls, ver, whoami, dir, date, ipconfig";
-      else if (cmd === 'cls' || cmd === 'clear') { out.innerHTML = ''; return; }
-      else if (cmd === 'ver') resp = "Microsoft Windows [Version 10.0.22000.194]";
-      else if (cmd === 'whoami') resp = "cloudos\\" + (STATE.currentUser ? STATE.currentUser.username : "guest");
-      else if (cmd === 'dir') resp = "<DIR> Documents\n<DIR> Downloads\n<DIR> Pictures\n<DIR> Code";
-      else if (cmd === 'date') resp = new Date().toString();
-      else if (cmd === 'ipconfig') resp = "IPv4 Address . . . . . . . . . . . : 192.168.1.100\nSubnet Mask . . . . . . . . . . . : 255.255.255.0";
-      else resp = "'" + cmd + "' is not recognized as an internal or external command.";
-
-      const rLine = document.createElement('div');
-      rLine.className = "text-slate-300 whitespace-pre-wrap";
-      rLine.innerText = resp;
-      out.appendChild(rLine);
-      out.scrollTop = out.scrollHeight;
-    }
-
-    /* Outlook Dispatch */
-    async function sendMailMessage(winId) {
-      const to = document.getElementById(winId + '_mail_to').value.trim();
-      const subject = document.getElementById(winId + '_mail_sub').value.trim();
-      const body = document.getElementById(winId + '_mail_body').value.trim();
-      if (!to) return alert("Enter recipient email address.");
-      try {
-        const res = await apiCall('send_mail', { to, subject, body });
-        alert(res.message);
-      } catch(e) { alert("Outlook error: " + e.message); }
     }
 
     /* Window Controls */
@@ -1764,7 +1222,7 @@
       document.execCommand('insertText', false, k);
     }
 
-    /* Virtual Precision Trackpad */
+    /* Virtual Trackpad */
     function initTrackpad() {
       const area = document.getElementById('trackpadArea');
       const cursor = document.getElementById('virtualCursor');
@@ -1812,7 +1270,7 @@
       tp.classList.toggle('rounded-2xl');
     }
 
-    /* Windows 11 UI Toggles */
+    /* General Toggles */
     function toggleStartMenu(force) {
       const menu = document.getElementById('startMenu');
       menu.classList.toggle('hidden', force !== undefined ? !force : undefined);
@@ -1823,16 +1281,7 @@
     }
 
     function toggleWidgetsPane() {
-      const p = document.getElementById('widgetsPane');
-      p.classList.toggle('hidden');
-    }
-
-    function toggleCalendarFlyout() {
-      launchApp('settings');
-    }
-
-    function toggleTaskView() {
-      alert("Task View: " + STATE.windows.length + " running window instances.");
+      document.getElementById('widgetsPane').classList.toggle('hidden');
     }
 
     function adjustBrightness(val) {
@@ -1861,1117 +1310,6 @@
     function escapeHtml(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
-
-    function windowAppBack(winId) {}
-  </script>
-</body>
-</html>",
-      currentUser: null,
-      windows: [],
-      activeWinId: null,
-      installedApps: [],
-      todos: [
-        { id: '1', Task: 'Sync project files with Google Drive', Completed: 'false' },
-        { id: '2', Task: 'Review WordPad document changes', Completed: 'true' }
-      ],
-      driveFiles: [],
-      bookmarks: [
-        { title: 'Bing', url: 'https://www.bing.com' },
-        { title: 'Wikipedia', url: 'https://en.wikipedia.org' }
-      ],
-      virtualMouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-      isShift: false,
-      historyStack: []
-    };
-
-    /* Windows 11 Applications Catalog */
-    const WIN11_APPS = {
-      explorer: { name: 'File Explorer', icon: 'folder', color: 'text-amber-400' },
-      edge: { name: 'Microsoft Edge', icon: 'globe', color: 'text-cyan-400' },
-      word: { name: 'WordPad Docs', icon: 'file-text', color: 'text-blue-500' },
-      vscode: { name: 'Visual Studio Code', icon: 'code', color: 'text-blue-400' },
-      terminal: { name: 'Terminal (PowerShell)', icon: 'terminal', color: 'text-purple-400' },
-      store: { name: 'Microsoft Store', icon: 'shopping-bag', color: 'text-sky-400' },
-      todo: { name: 'Microsoft To Do', icon: 'check-square', color: 'text-teal-400' },
-      mail: { name: 'Outlook Mail', icon: 'mail', color: 'text-blue-400' },
-      photos: { name: 'Photos', icon: 'image', color: 'text-pink-400' },
-      media: { name: 'Media Player', icon: 'play-circle', color: 'text-orange-400' },
-      youtube: { name: 'YouTube', icon: 'play-square', color: 'text-red-500' },
-      scanner: { name: 'Camera Scanner', icon: 'scan-line', color: 'text-emerald-400' },
-      calculator: { name: 'Calculator', icon: 'calculator', color: 'text-slate-300' },
-      settings: { name: 'Settings', icon: 'settings', color: 'text-slate-400' }
-    };
-
-    /* System Boot */
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      initClocks();
-      renderDesktopIcons();
-      renderTaskbar();
-      initVirtualKeyboard();
-      initTrackpad();
-      renderWidgetTodos();
-      checkSession();
-    });
-
-    /* Live Clocks */
-    function initClocks() {
-      const tick = () => {
-        const d = new Date();
-        const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const dateStr = d.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: 'numeric' });
-        const dateLong = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-        document.getElementById('taskbarTime').innerText = t;
-        document.getElementById('taskbarDate').innerText = dateStr;
-        document.getElementById('widgetTime').innerText = t;
-        document.getElementById('widgetDate').innerText = dateLong;
-      };
-      tick();
-      setInterval(tick, 1000);
-    }
-
-    /* Auth & Session State */
-    function checkSession() {
-      const savedUser = sessionStorage.getItem('cloudos_win11_user');
-      const savedScript = localStorage.getItem('cloudos_win11_script_url') || STATE.appsScriptUrl;
-      if (savedScript) {
-        STATE.appsScriptUrl = savedScript;
-        document.getElementById('cfgAppsScriptUrl').value = savedScript;
-      }
-      if (savedUser) {
-        STATE.currentUser = JSON.parse(savedUser);
-        document.getElementById('authGate').classList.add('hidden');
-        document.getElementById('startUsername').innerText = STATE.currentUser.username;
-        document.getElementById('startEmail').innerText = STATE.currentUser.email;
-        document.getElementById('userAvatarLetter').innerText = STATE.currentUser.username.charAt(0).toUpperCase();
-        syncCloudData();
-      }
-    }
-
-    function switchAuthTab(tab) {
-      document.getElementById('containerLogin').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('containerRegister').classList.toggle('hidden', tab !== 'register');
-      document.getElementById('containerForgot').classList.toggle('hidden', tab !== 'forgot');
-
-      const tabs = ['Login', 'Register', 'Forgot'];
-      tabs.forEach(t => {
-        const btn = document.getElementById('authTab' + t);
-        if (t.toLowerCase() === tab) {
-          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition';
-        } else {
-          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition';
-        }
-      });
-      document.getElementById('authStatus').innerText = '';
-    }
-
-    async function apiCall(action, payload = {}) {
-      const url = document.getElementById('cfgAppsScriptUrl').value.trim() || STATE.appsScriptUrl;
-      if (!url) throw new Error("Please configure your Google Apps Script Web App URL first.");
-      localStorage.setItem('cloudos_win11_script_url', url);
-      STATE.appsScriptUrl = url;
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, ...payload })
-      });
-      return await res.json();
-    }
-
-    async function submitAuth(type) {
-      const status = document.getElementById('authStatus');
-      status.innerText = "Connecting to Windows Cloud Service...";
-
-      try {
-        if (type === 'login') {
-          const u = document.getElementById('loginUser').value.trim();
-          const p = document.getElementById('loginPass').value.trim();
-          if (!u || !p) { status.innerText = "Please enter username and password."; return; }
-          const res = await apiCall('login', { username: u, password: p });
-          if (res.status === 'success') {
-            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
-            checkSession();
-          } else { status.innerText = res.message; }
-        } else if (type === 'register') {
-          const u = document.getElementById('regUser').value.trim();
-          const e = document.getElementById('regEmail').value.trim();
-          const p = document.getElementById('regPass').value.trim();
-          if (!u || !e || !p) { status.innerText = "All registration fields are required."; return; }
-          const res = await apiCall('register', { username: u, email: e, password: p });
-          if (res.status === 'success') {
-            sessionStorage.setItem('cloudos_win11_user', JSON.stringify(res.user));
-            checkSession();
-          } else { status.innerText = res.message; }
-        } else if (type === 'forgot') {
-          const e = document.getElementById('forgotEmail').value.trim();
-          if (!e) { status.innerText = "Please enter your registered email."; return; }
-          const res = await apiCall('forgot_password', { email: e });
-          status.innerText = res.message;
-        }
-      } catch (err) {
-        status.innerText = "Error: " + err.message;
-      }
-    }
-
-    async function syncCloudData() {
-      if (!STATE.currentUser) return;
-      try {
-        const [todosRes, appsRes, driveRes] = await Promise.all([
-          apiCall('get_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks' }),
-          apiCall('get_apps', { username: STATE.currentUser.username }),
-          apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId })
-        ]);
-        if (todosRes.data && todosRes.data.length) { STATE.todos = todosRes.data; renderWidgetTodos(); }
-        if (appsRes.apps) { STATE.installedApps = appsRes.apps; renderDesktopIcons(); renderStartApps(); }
-        if (driveRes.files) { STATE.driveFiles = driveRes.files; }
-      } catch (e) {
-        console.warn("Cloud sync notice:", e);
-      }
-    }
-
-    /* Desktop Icons Rendering */
-    function renderDesktopIcons() {
-      const container = document.getElementById('desktopIcons');
-      container.innerHTML = '';
-
-      const all = [
-        ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
-        ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
-      ];
-
-      all.forEach(app => {
-        const div = document.createElement('div');
-        div.className = "win-app-icon flex flex-col items-center justify-center p-2 rounded-xl hover:bg-white/10 cursor-pointer text-white transition active:scale-95 text-center";
-        div.innerHTML = `
-          <div class="w-10 h-10 rounded-xl mica flex items-center justify-center shadow-lg mb-1 ${app.color || 'text-blue-400'}">
-            <i data-lucide="${app.icon || 'layout-grid'}" class="w-6 h-6"></i>
-          </div>
-          <span class="text-[11px] font-normal tracking-tight drop-shadow truncate w-full text-slate-100">${app.name}</span>
-        `;
-        div.onclick = () => launchApp(app.id, app.meta);
-        container.appendChild(div);
-      });
-      lucide.createIcons();
-      renderStartApps();
-    }
-
-    /* Start Menu Apps Grid */
-    function renderStartApps(all = false) {
-      const grid = document.getElementById('startAppGrid');
-      grid.innerHTML = '';
-      const list = [
-        ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
-        ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
-      ];
-
-      list.forEach(app => {
-        const item = document.createElement('button');
-        item.className = "flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center";
-        item.innerHTML = `
-          <div class="w-9 h-9 rounded-xl mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
-            <i data-lucide="${app.icon || 'layout-grid'}" class="w-5 h-5"></i>
-          </div>
-          <span class="text-[11px] truncate w-full text-white/90">${app.name}</span>
-        `;
-        item.onclick = () => { launchApp(app.id, app.meta); toggleStartMenu(false); };
-        grid.appendChild(item);
-      });
-      lucide.createIcons();
-    }
-
-    function filterStartApps(val) {
-      const query = val.toLowerCase().trim();
-      const grid = document.getElementById('startAppGrid');
-      grid.innerHTML = '';
-      const list = [
-        ...Object.keys(WIN11_APPS).map(k => ({ id: k, ...WIN11_APPS[k], custom: false })),
-        ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', custom: true, meta: a }))
-      ];
-      list.filter(a => a.name.toLowerCase().includes(query)).forEach(app => {
-        const item = document.createElement('button');
-        item.className = "flex flex-col items-center p-2 rounded-xl hover:bg-white/10 active:scale-95 transition text-center";
-        item.innerHTML = `
-          <div class="w-9 h-9 rounded-xl mica flex items-center justify-center shadow mb-1 ${app.color || 'text-blue-400'}">
-            <i data-lucide="${app.icon || 'layout-grid'}" class="w-5 h-5"></i>
-          </div>
-          <span class="text-[11px] truncate w-full text-white/90">${app.name}</span>
-        `;
-        item.onclick = () => { launchApp(app.id, app.meta); toggleStartMenu(false); };
-        grid.appendChild(item);
-      });
-      lucide.createIcons();
-    }
-
-    /* Windows 11 Taskbar Centered Pinned Apps & Running State */
-    function renderTaskbar() {
-      const pinnedContainer = document.getElementById('taskbarPinnedApps');
-      pinnedContainer.innerHTML = '';
-      const pinned = ['explorer', 'edge', 'word', 'vscode', 'store'];
-
-      pinned.forEach(id => {
-        const app = WIN11_APPS[id];
-        const btn = document.createElement('button');
-        const isRunning = STATE.windows.some(w => w.appKey === id);
-        btn.className = `w-10 h-10 rounded-lg hover:bg-white/10 active:scale-95 transition flex flex-col items-center justify-center relative ${isRunning ? 'bg-white/5' : ''}`;
-        btn.innerHTML = `
-          <i data-lucide="${app.icon}" class="w-5 h-5 ${app.color}"></i>
-          ${isRunning ? '<span class="absolute bottom-1 w-1.5 h-1 bg-blue-400 rounded-full"></span>' : ''}
-        `;
-        btn.onclick = () => launchApp(id);
-        pinnedContainer.appendChild(btn);
-      });
-
-      // Render Dynamic Running Instances
-      const runningContainer = document.getElementById('taskbarRunningApps');
-      runningContainer.innerHTML = '';
-      STATE.windows.forEach(w => {
-        const rBtn = document.createElement('button');
-        rBtn.className = `px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-xs transition ${w.id === STATE.activeWinId && !w.minimized ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/70'}`;
-        rBtn.innerHTML = `
-          <i data-lucide="${w.icon}" class="w-3.5 h-3.5 text-blue-400"></i>
-          <span class="max-w-24 truncate">${w.title}</span>
-        `;
-        rBtn.onclick = () => {
-          if (w.minimized) {
-            w.minimized = false;
-            document.getElementById(w.id)?.classList.remove('hidden');
-            focusWindow(w.id);
-          } else if (w.id === STATE.activeWinId) {
-            minimizeWindow(w.id);
-          } else {
-            focusWindow(w.id);
-          }
-        };
-        runningContainer.appendChild(rBtn);
-      });
-      lucide.createIcons();
-    }
-
-    /* Windows 11 Window Manager */
-    function launchApp(appKey, customMeta = null) {
-      const winId = 'win_' + Date.now();
-      const isMobile = window.innerWidth < 768;
-      const isTablet = window.innerWidth >= 744 && window.innerWidth <= 1133;
-
-      const meta = customMeta ? customMeta : WIN11_APPS[appKey];
-      const winObj = {
-        id: winId,
-        appKey: appKey,
-        title: meta ? meta.name : 'Application',
-        icon: meta ? meta.icon : 'layout-grid',
-        minimized: false,
-        maximized: isMobile,
-        x: isMobile ? 0 : 50 + (STATE.windows.length * 28),
-        y: isMobile ? 0 : 35 + (STATE.windows.length * 28),
-        w: isMobile ? window.innerWidth : (isTablet ? 700 : 800),
-        h: isMobile ? window.innerHeight - 48 : 530
-      };
-
-      STATE.windows.push(winObj);
-      renderWindow(winObj, customMeta);
-      focusWindow(winId);
-      renderTaskbar();
-    }
-
-    function renderWindow(win, customMeta) {
-      const container = document.getElementById('windowsContainer');
-      const winEl = document.createElement('div');
-      winEl.id = win.id;
-      winEl.className = `absolute rounded-xl acrylic-popup text-white flex flex-col shadow-2xl border border-white/15 overflow-hidden transition-[transform,opacity] duration-150 ${win.maximized ? 'inset-0 !rounded-none !border-0' : ''}`;
-      winEl.style.left = win.maximized ? '0px' : win.x + 'px';
-      winEl.style.top = win.maximized ? '0px' : win.y + 'px';
-      winEl.style.width = win.maximized ? '100vw' : win.w + 'px';
-      winEl.style.height = win.maximized ? 'calc(100vh - 48px)' : win.h + 'px';
-
-      winEl.innerHTML = `
-        <!-- Windows 11 Fluent Titlebar -->
-        <div class="h-9 bg-black/40 border-b border-white/10 px-3 flex items-center justify-between cursor-move" onpointerdown="startWinDrag(event, '${win.id}')">
-          <div class="flex items-center gap-2">
-            <button onclick="windowAppBack('${win.id}')" title="Back" class="p-1 rounded-md hover:bg-white/10 text-white/70 hover:text-white">
-              <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
-            </button>
-            <i data-lucide="${win.icon}" class="w-3.5 h-3.5 text-blue-400"></i>
-            <span class="text-xs font-normal text-white/90">${win.title}</span>
-          </div>
-          <!-- Windows 11 Minimize, Maximize/Restore, Close Controls -->
-          <div class="flex items-center">
-            <button onclick="minimizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Minimize">
-              <i data-lucide="minus" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="maximizeWindow('${win.id}')" class="h-9 px-3 hover:bg-white/10 text-white/70 hover:text-white" title="Maximize / Restore">
-              <i data-lucide="square" class="w-3 h-3"></i>
-            </button>
-            <button onclick="closeWindow('${win.id}')" class="h-9 px-3 hover:bg-red-600 text-white/70 hover:text-white" title="Close">
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        </div>
-        <!-- Window Content Viewport -->
-        <div class="flex-1 overflow-auto bg-slate-950/85 p-3 relative flex flex-col" id="${win.id}_body">
-          ${getAppContent(win.appKey, customMeta, win.id)}
-        </div>
-      `;
-
-      winEl.onpointerdown = () => focusWindow(win.id);
-      container.appendChild(winEl);
-      lucide.createIcons();
-    }
-
-    function getAppContent(key, customMeta, winId) {
-      if (customMeta) {
-        if (customMeta.type === 'url') {
-          return `<iframe src="${customMeta.codeOrUrl}" class="w-full h-full border-0 rounded-lg bg-white"></iframe>`;
-        } else {
-          return `<iframe srcdoc="${escapeHtml(customMeta.codeOrUrl)}" sandbox="allow-scripts allow-forms" class="w-full h-full border-0 rounded-lg bg-white"></iframe>`;
-        }
-      }
-
-      switch (key) {
-        case 'explorer':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex flex-wrap gap-2 items-center justify-between pb-2 border-b border-white/10">
-                <div class="flex items-center gap-2">
-                  <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium cursor-pointer flex items-center gap-1.5 transition">
-                    <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Upload to Google Drive
-                    <input type="file" class="hidden" onchange="uploadFileToDrive(event, '${winId}')" />
-                  </label>
-                  <button onclick="refreshDriveView('${winId}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg font-medium flex items-center gap-1">
-                    <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Refresh
-                  </button>
-                </div>
-                <span class="text-white/60">Drive: CloudOS\\${STATE.currentUser ? STATE.currentUser.username : 'User'}</span>
-              </div>
-              <div id="${winId}_drive_list" class="flex-1 overflow-y-auto space-y-2"></div>
-            </div>`;
-
-        case 'word':
-          return `
-            <div class="flex flex-col h-full bg-white text-slate-900 rounded-lg overflow-hidden shadow-inner">
-              <div class="bg-slate-100 border-b border-slate-200 p-2 flex flex-wrap gap-1.5 text-xs items-center">
-                <button onclick="document.execCommand('bold')" class="px-2.5 py-1 rounded bg-white shadow-sm font-bold">B</button>
-                <button onclick="document.execCommand('italic')" class="px-2.5 py-1 rounded bg-white shadow-sm italic">I</button>
-                <button onclick="document.execCommand('underline')" class="px-2.5 py-1 rounded bg-white shadow-sm underline">U</button>
-                <button onclick="document.execCommand('justifyLeft')" class="px-2 py-1 rounded bg-white shadow-sm">Left</button>
-                <button onclick="document.execCommand('justifyCenter')" class="px-2 py-1 rounded bg-white shadow-sm">Center</button>
-                <button onclick="document.execCommand('justifyFull')" class="px-2 py-1 rounded bg-white shadow-sm font-semibold">Justify</button>
-                <input type="color" onchange="document.execCommand('foreColor', false, this.value)" class="w-6 h-6 p-0 border-0 rounded cursor-pointer" />
-                <label class="px-3 py-1 rounded bg-blue-600 text-white cursor-pointer hover:bg-blue-500 font-medium">
-                  Open .docx <input type="file" accept=".docx" class="hidden" onchange="parseDocx(event, '${winId}')" />
-                </label>
-                <button onclick="saveWordDoc('${winId}')" class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium">Save to Drive</button>
-                <button onclick="downloadWordDoc('${winId}')" class="px-3 py-1 rounded bg-slate-800 text-white hover:bg-slate-700 font-medium">Download</button>
-              </div>
-              <div id="${winId}_word_body" contenteditable="true" class="flex-1 p-6 overflow-y-auto focus:outline-none text-sm leading-relaxed" style="min-height: 200px;">
-                <h1 class="text-2xl font-bold mb-2">Windows 11 WordPad</h1>
-                <p>Edit documents natively with rich formatting. Open Microsoft Word .docx files or save directly to Google Drive.</p>
-              </div>
-            </div>`;
-
-        case 'vscode':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex items-center justify-between pb-1 border-b border-white/10">
-                <div class="flex items-center gap-2">
-                  <span class="px-3 py-1 bg-white/10 rounded-md text-blue-400 font-mono">App.html</span>
-                  <button onclick="runVsCode('${winId}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-md text-white font-medium flex items-center gap-1">
-                    <i data-lucide="play" class="w-3 h-3"></i> Run Project
-                  </button>
-                </div>
-                <button onclick="saveVsCodeToDrive('${winId}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded-md text-white font-medium">Save to Drive</button>
-              </div>
-              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 overflow-hidden">
-                <textarea id="${winId}_code_editor" class="w-full h-full bg-slate-900 text-emerald-400 font-mono p-3 rounded-lg border border-white/10 outline-none resize-none text-xs"><!DOCTYPE html>
-<html>
-<body style="font-family:'Segoe UI',sans-serif;text-align:center;padding:40px;background:#18181b;color:#fff;">
-  <h2>Visual Studio Code on Windows 11</h2>
-  <p>Live sandboxed code runner.</p>
-</body>
-</html></textarea>
-                <iframe id="${winId}_code_preview" class="w-full h-full bg-white rounded-lg border-0"></iframe>
-              </div>
-            </div>`;
-
-        case 'edge':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/10">
-                <button onclick="browserNav('${winId}', 'back')" class="p-1 hover:bg-white/10 rounded"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-                <button onclick="browserNav('${winId}', 'forward')" class="p-1 hover:bg-white/10 rounded"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
-                <button onclick="browserNav('${winId}', 'refresh')" class="p-1 hover:bg-white/10 rounded"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
-                <input id="${winId}_browser_url" type="text" value="https://en.wikipedia.org" onkeydown="if(event.key==='Enter') navigateBrowser('${winId}')"
-                       class="flex-1 bg-black/40 border border-white/10 rounded-md px-3 py-1 text-white outline-none focus:border-blue-500" />
-                <button onclick="navigateBrowser('${winId}')" class="px-3 py-1 bg-blue-600 text-white rounded-md font-medium">Go</button>
-              </div>
-              <div class="flex-1 bg-white rounded-lg overflow-hidden relative">
-                <iframe id="${winId}_browser_frame" src="https://en.wikipedia.org" class="w-full h-full border-0"></iframe>
-              </div>
-            </div>`;
-
-        case 'terminal':
-          return `
-            <div class="flex flex-col h-full bg-black text-slate-100 font-mono p-3 rounded-lg text-xs overflow-hidden">
-              <div id="${winId}_term_out" class="flex-1 overflow-y-auto space-y-1">
-                <div>Windows PowerShell</div>
-                <div>Copyright (C) Microsoft Corporation. All rights reserved.</div>
-                <div class="text-blue-400">CloudOS Drive Storage Connected. Type 'help' for commands.</div>
-              </div>
-              <div class="flex items-center gap-1 pt-2 border-t border-white/10">
-                <span class="text-emerald-400">PS C:\\Users\\CloudOS&gt;</span>
-                <input id="${winId}_term_in" type="text" onkeydown="if(event.key==='Enter') runPowerShellCmd(this, '${winId}')"
-                       class="flex-1 bg-transparent text-white outline-none" autofocus />
-              </div>
-            </div>`;
-
-        case 'store':
-          return `
-            <div class="p-4 space-y-4 max-w-lg mx-auto text-xs">
-              <div class="text-sm font-semibold text-white">Microsoft Store & App Deployment</div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="font-medium text-blue-400">Option 1: Deploy from Web App URL / PWA</div>
-                <input id="${winId}_store_url" type="url" placeholder="https://example.com" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_store_name_url" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <button onclick="installStoreUrl('${winId}')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Install Web App</button>
-              </div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="font-medium text-emerald-400">Option 2: Deploy from Code Upload (.html, .js)</div>
-                <input id="${winId}_store_name_file" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_store_file" type="file" accept=".html,.js,.txt" class="text-white/70" />
-                <button onclick="installStoreCode('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold text-white">Upload Code & Install</button>
-              </div>
-            </div>`;
-
-        case 'todo':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex gap-2">
-                <input id="${winId}_todo_in" type="text" placeholder="Add a task..." onkeydown="if(event.key==='Enter') addTodoAction('${winId}')"
-                       class="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500" />
-                <button onclick="addTodoAction('${winId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Add</button>
-              </div>
-              <div id="${winId}_todo_list" class="flex-1 overflow-y-auto space-y-2"></div>
-            </div>`;
-
-        case 'mail':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                <div class="text-sm font-semibold text-white">New Mail Message</div>
-                <input id="${winId}_mail_to" type="email" placeholder="To: recipient@example.com" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none" />
-                <input id="${winId}_mail_sub" type="text" placeholder="Subject" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none" />
-                <textarea id="${winId}_mail_body" rows="6" placeholder="Write message..." class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none resize-none"></textarea>
-                <button onclick="sendMailMessage('${winId}')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-white">Send Message via Outlook</button>
-              </div>
-            </div>`;
-
-        case 'youtube':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex gap-2">
-                <input id="${winId}_yt_input" type="text" placeholder="Paste YouTube link or Video ID (Ad-Free Player)..."
-                       class="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white outline-none" />
-                <button onclick="loadYouTubeVideo('${winId}')" class="px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg font-medium text-white">Play</button>
-              </div>
-              <div class="flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center">
-                <iframe id="${winId}_yt_frame" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" class="w-full h-full border-0" allowfullscreen></iframe>
-              </div>
-            </div>`;
-
-        case 'scanner':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex flex-wrap gap-2 items-center justify-between">
-                <div class="flex gap-2">
-                  <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium cursor-pointer">
-                    Capture / Select Image <input type="file" accept="image/*" class="hidden" onchange="processScanFile(event, '${winId}')" />
-                  </label>
-                  <button onclick="downloadScanDoc('${winId}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium">Download Scanned Doc</button>
-                </div>
-                <div class="flex gap-3 items-center text-white/80">
-                  <span>Contrast: <input id="${winId}_contrast" type="range" min="50" max="250" value="140" oninput="applyScanCanvasFilter('${winId}')" /></span>
-                  <span>Brightness: <input id="${winId}_bright" type="range" min="50" max="200" value="110" oninput="applyScanCanvasFilter('${winId}')" /></span>
-                </div>
-              </div>
-              <div class="flex-1 bg-black/40 rounded-lg overflow-hidden flex items-center justify-center border border-white/10 p-2">
-                <canvas id="${winId}_scan_canvas" class="max-h-full max-w-full rounded shadow-xl"></canvas>
-              </div>
-            </div>`;
-
-        case 'media':
-          return `
-            <div class="flex flex-col h-full gap-3 text-xs text-center justify-center items-center p-6">
-              <div class="w-28 h-28 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-xl mb-3">
-                <i data-lucide="music" class="w-12 h-12 text-white"></i>
-              </div>
-              <div class="text-base font-semibold text-white">Windows Media Player</div>
-              <input type="file" accept="audio/*,video/*" onchange="loadMediaAsset(event, '${winId}')" class="text-xs text-white/70" />
-              <video id="${winId}_media_player" controls class="w-full max-w-md mt-3 rounded-lg hidden"></video>
-            </div>`;
-
-        case 'calculator':
-          return `
-            <div class="max-w-xs mx-auto p-4 bg-slate-900 rounded-xl flex flex-col gap-2 shadow-2xl border border-white/10">
-              <input id="${winId}_calc_scr" readonly type="text" value="0" class="w-full bg-black/60 text-right p-4 text-2xl font-mono text-white rounded-lg border border-slate-700" />
-              <div class="grid grid-cols-4 gap-1.5 text-sm font-semibold text-white">
-                <button onclick="calcPress('${winId}','C')" class="p-2.5 bg-red-600 rounded-lg">C</button>
-                <button onclick="calcPress('${winId}','/')" class="p-2.5 bg-slate-800 rounded-lg">/</button>
-                <button onclick="calcPress('${winId}','*')" class="p-2.5 bg-slate-800 rounded-lg">*</button>
-                <button onclick="calcPress('${winId}','-')" class="p-2.5 bg-slate-800 rounded-lg">-</button>
-                <button onclick="calcPress('${winId}','7')" class="p-2.5 bg-slate-800/60 rounded-lg">7</button>
-                <button onclick="calcPress('${winId}','8')" class="p-2.5 bg-slate-800/60 rounded-lg">8</button>
-                <button onclick="calcPress('${winId}','9')" class="p-2.5 bg-slate-800/60 rounded-lg">9</button>
-                <button onclick="calcPress('${winId}','+')" class="p-2.5 bg-slate-800 rounded-lg">+</button>
-                <button onclick="calcPress('${winId}','4')" class="p-2.5 bg-slate-800/60 rounded-lg">4</button>
-                <button onclick="calcPress('${winId}','5')" class="p-2.5 bg-slate-800/60 rounded-lg">5</button>
-                <button onclick="calcPress('${winId}','6')" class="p-2.5 bg-slate-800/60 rounded-lg">6</button>
-                <button onclick="calcPress('${winId}','=')" class="row-span-2 p-2.5 bg-blue-600 rounded-lg flex items-center justify-center font-bold">=</button>
-                <button onclick="calcPress('${winId}','1')" class="p-2.5 bg-slate-800/60 rounded-lg">1</button>
-                <button onclick="calcPress('${winId}','2')" class="p-2.5 bg-slate-800/60 rounded-lg">2</button>
-                <button onclick="calcPress('${winId}','3')" class="p-2.5 bg-slate-800/60 rounded-lg">3</button>
-                <button onclick="calcPress('${winId}','0')" class="col-span-2 p-2.5 bg-slate-800/60 rounded-lg">0</button>
-                <button onclick="calcPress('${winId}','.')" class="p-2.5 bg-slate-800/60 rounded-lg">.</button>
-              </div>
-            </div>`;
-
-        case 'settings':
-          return `
-            <div class="p-4 max-w-xl mx-auto space-y-4 text-xs">
-              <div class="text-sm font-semibold text-white">Windows Settings</div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                <div class="font-medium text-white/80">Personalization (Wallpaper)</div>
-                <div class="flex gap-2">
-                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Bloom Dark</button>
-                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Landscape</button>
-                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Mountain</button>
-                </div>
-              </div>
-              <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                <div class="font-medium text-white/80">Accounts & Security</div>
-                <input id="${winId}_old_pass" type="password" placeholder="Current Password" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <input id="${winId}_new_pass" type="password" placeholder="New Password" class="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" />
-                <button onclick="updateAccountPassword('${winId}')" class="px-4 py-1.5 bg-blue-600 rounded-lg text-white font-medium">Update Password</button>
-              </div>
-              <button onclick="handleLogout()" class="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-semibold">Sign Out of Windows</button>
-            </div>`;
-
-        default:
-          return `<div class="p-4 text-xs text-white/70">Application initialized.</div>`;
-      }
-    }
-
-    /* Drive Files Operations */
-    async function refreshDriveView(winId) {
-      if (!STATE.currentUser) return alert("Please sign in first.");
-      const listEl = document.getElementById(winId + '_drive_list');
-      listEl.innerHTML = '<div class="text-white/60 p-2">Connecting to Google Drive...</div>';
-      try {
-        const res = await apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId });
-        listEl.innerHTML = '';
-        if (!res.files || res.files.length === 0) {
-          listEl.innerHTML = '<div class="text-white/50 p-4 text-center">Your cloud folder is empty. Upload a file above!</div>';
-          return;
-        }
-        res.files.forEach(f => {
-          const item = document.createElement('div');
-          item.className = "p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/10 transition";
-          item.innerHTML = `
-            <div class="flex items-center gap-2.5 overflow-hidden">
-              <i data-lucide="file" class="w-4 h-4 text-blue-400 shrink-0"></i>
-              <div class="truncate">
-                <div class="font-medium text-white truncate">${f.name}</div>
-                <div class="text-[10px] text-white/50">${f.size}</div>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <a href="${f.url}" target="_blank" class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium text-[11px]">View</a>
-              <button onclick="deleteDriveFile('${f.id}','${winId}')" class="p-1 text-red-400 hover:text-red-300"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
-            </div>
-          `;
-          listEl.appendChild(item);
-        });
-        lucide.createIcons();
-      } catch (e) {
-        listEl.innerHTML = '<div class="text-red-400 p-2">Error: ' + e.message + '</div>';
-      }
-    }
-
-    async function uploadFileToDrive(e, winId) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async function() {
-        const base64 = reader.result.split(',')[1];
-        try {
-          await apiCall('drive_upload', {
-            folderId: STATE.currentUser.driveFolderId,
-            fileName: file.name,
-            mimeType: file.type,
-            base64Content: base64
-          });
-          alert("File stored in Google Drive!");
-          refreshDriveView(winId);
-        } catch (err) { alert("Drive error: " + err.message); }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    async function deleteDriveFile(fileId, winId) {
-      if (!confirm("Send this file to the Recycle Bin?")) return;
-      try {
-        await apiCall('drive_delete', { fileId });
-        refreshDriveView(winId);
-      } catch (e) { alert(e.message); }
-    }
-
-    /* WordPad (.docx) Parsing & Saving */
-    function parseDocx(event, winId) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        mammoth.convertToHtml({ arrayBuffer: e.target.result })
-          .then(res => { document.getElementById(winId + '_word_body').innerHTML = res.value; })
-          .catch(err => alert("DOCX Parse Error: " + err.message));
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    async function saveWordDoc(winId) {
-      if (!STATE.currentUser) return alert("Sign in first.");
-      const html = document.getElementById(winId + '_word_body').innerHTML;
-      const base64 = btoa(unescape(encodeURIComponent(html)));
-      try {
-        await apiCall('drive_upload', {
-          folderId: STATE.currentUser.driveFolderId,
-          fileName: 'Document_' + Date.now() + '.html',
-          mimeType: 'text/html',
-          base64Content: base64
-        });
-        alert("Document saved to your Google Drive!");
-      } catch (e) { alert("Error: " + e.message); }
-    }
-
-    function downloadWordDoc(winId) {
-      const html = document.getElementById(winId + '_word_body').innerHTML;
-      const blob = new Blob(['<!DOCTYPE html><html><body>' + html + '</body></html>'], { type: 'application/msword' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'Document.doc';
-      a.click();
-    }
-
-    /* To Do Task Operations */
-    function renderWidgetTodos() {
-      const list = document.getElementById('widgetTodoList');
-      list.innerHTML = '';
-      STATE.todos.slice(0, 4).forEach((t, idx) => {
-        const item = document.createElement('div');
-        item.className = "flex items-center gap-2";
-        item.innerHTML = `
-          <input type="checkbox" ${t.Completed === 'true' ? 'checked' : ''} onchange="toggleTodoState(${idx})" class="rounded accent-blue-600" />
-          <span class="${t.Completed === 'true' ? 'line-through text-slate-400' : 'text-slate-100'} truncate">${t.Task}</span>
-        `;
-        list.appendChild(item);
-      });
-    }
-
-    function addWidgetTodo() {
-      const input = document.getElementById('widgetNewTodoInput');
-      const val = input.value.trim();
-      if (!val) return;
-      STATE.todos.unshift({ id: Date.now().toString(), Task: val, Completed: 'false' });
-      input.value = '';
-      renderWidgetTodos();
-      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
-    }
-
-    function toggleTodoState(idx) {
-      STATE.todos[idx].Completed = STATE.todos[idx].Completed === 'true' ? 'false' : 'true';
-      renderWidgetTodos();
-      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
-    }
-
-    function addTodoAction(winId) {
-      const val = document.getElementById(winId + '_todo_in').value.trim();
-      if (!val) return;
-      STATE.todos.unshift({ id: Date.now().toString(), Task: val, Completed: 'false' });
-      document.getElementById(winId + '_todo_in').value = '';
-      renderWidgetTodos();
-      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.todos });
-    }
-
-    /* VS Code Studio Actions */
-    function runVsCode(winId) {
-      const code = document.getElementById(winId + '_code_editor').value;
-      document.getElementById(winId + '_code_preview').srcdoc = code;
-    }
-
-    async function saveVsCodeToDrive(winId) {
-      const code = document.getElementById(winId + '_code_editor').value;
-      const base64 = btoa(unescape(encodeURIComponent(code)));
-      await apiCall('drive_upload', {
-        folderId: STATE.currentUser.driveFolderId,
-        fileName: 'Project_' + Date.now() + '.html',
-        mimeType: 'text/html',
-        base64Content: base64
-      });
-      alert("Code saved to Google Drive!");
-    }
-
-    /* Microsoft Store App Installer */
-    async function installStoreUrl(winId) {
-      const url = document.getElementById(winId + '_store_url').value.trim();
-      const name = document.getElementById(winId + '_store_name_url').value.trim() || 'Web App';
-      if (!url) return alert("Enter URL");
-      await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'globe', type: 'url', codeOrUrl: url });
-      syncCloudData();
-      alert("Application installed!");
-    }
-
-    async function installStoreCode(winId) {
-      const fileInput = document.getElementById(winId + '_store_file');
-      const name = document.getElementById(winId + '_store_name_file').value.trim() || 'Uploaded App';
-      if (!fileInput.files[0]) return alert("Select code file");
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'code', type: 'code', codeOrUrl: e.target.result });
-        syncCloudData();
-        alert("App uploaded & installed!");
-      };
-      reader.readAsText(fileInput.files[0]);
-    }
-
-    /* Scanner Filter & Download */
-    function processScanFile(e, winId) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.getElementById(winId + '_scan_canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        applyScanCanvasFilter(winId);
-      };
-      img.src = URL.createObjectURL(file);
-    }
-
-    function applyScanCanvasFilter(winId) {
-      const canvas = document.getElementById(winId + '_scan_canvas');
-      const c = document.getElementById(winId + '_contrast').value;
-      const b = document.getElementById(winId + '_bright').value;
-      canvas.style.filter = `contrast(${c}\%) brightness(${b}%) grayscale(100%)`;
-    }
-
-    function downloadScanDoc(winId) {
-      const canvas = document.getElementById(winId + '_scan_canvas');
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/jpeg');
-      a.download = 'Scanned_Doc.jpg';
-      a.click();
-    }
-
-    /* Media Playback */
-    function loadMediaAsset(e, winId) {
-      const file = e.target.files[0];
-      if (file) {
-        const player = document.getElementById(winId + '_media_player');
-        player.classList.remove('hidden');
-        player.src = URL.createObjectURL(file);
-      }
-    }
-
-    function loadYouTubeVideo(winId) {
-      const val = document.getElementById(winId + '_yt_input').value.trim();
-      let id = val;
-      if (val.includes('v=')) id = val.split('v=')[1].split('&')[0];
-      else if (val.includes('youtu.be/')) id = val.split('youtu.be/')[1];
-      document.getElementById(winId + '_yt_frame').src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
-    }
-
-    /* Browser Navigation */
-    function navigateBrowser(winId) {
-      const url = document.getElementById(winId + '_browser_url').value.trim();
-      document.getElementById(winId + '_browser_frame').src = url.startsWith('http') ? url : 'https://' + url;
-    }
-
-    function browserNav(winId, action) {
-      const f = document.getElementById(winId + '_browser_frame');
-      if (action === 'refresh') f.src = f.src;
-    }
-
-    /* PowerShell Runner */
-    function runPowerShellCmd(input, winId) {
-      const cmd = input.value.trim();
-      input.value = '';
-      const out = document.getElementById(winId + '_term_out');
-      const line = document.createElement('div');
-      line.innerText = "PS C:\\Users\\CloudOS> " + cmd;
-      out.appendChild(line);
-
-      let resp = "";
-      if (cmd === 'help') resp = "Commands: help, cls, ver, whoami, dir, date, ipconfig";
-      else if (cmd === 'cls' || cmd === 'clear') { out.innerHTML = ''; return; }
-      else if (cmd === 'ver') resp = "Microsoft Windows [Version 10.0.22000.194]";
-      else if (cmd === 'whoami') resp = "cloudos\\" + (STATE.currentUser ? STATE.currentUser.username : "guest");
-      else if (cmd === 'dir') resp = "<DIR> Documents\n<DIR> Downloads\n<DIR> Pictures\n<DIR> Code";
-      else if (cmd === 'date') resp = new Date().toString();
-      else if (cmd === 'ipconfig') resp = "IPv4 Address . . . . . . . . . . . : 192.168.1.100\nSubnet Mask . . . . . . . . . . . : 255.255.255.0";
-      else resp = "'" + cmd + "' is not recognized as an internal or external command.";
-
-      const rLine = document.createElement('div');
-      rLine.className = "text-slate-300 whitespace-pre-wrap";
-      rLine.innerText = resp;
-      out.appendChild(rLine);
-      out.scrollTop = out.scrollHeight;
-    }
-
-    /* Outlook Dispatch */
-    async function sendMailMessage(winId) {
-      const to = document.getElementById(winId + '_mail_to').value.trim();
-      const subject = document.getElementById(winId + '_mail_sub').value.trim();
-      const body = document.getElementById(winId + '_mail_body').value.trim();
-      if (!to) return alert("Enter recipient email address.");
-      try {
-        const res = await apiCall('send_mail', { to, subject, body });
-        alert(res.message);
-      } catch(e) { alert("Outlook error: " + e.message); }
-    }
-
-    /* Window Controls */
-    function focusWindow(winId) {
-      STATE.activeWinId = winId;
-      STATE.windows.forEach(w => {
-        const el = document.getElementById(w.id);
-        if (el) el.style.zIndex = (w.id === winId) ? '35' : '25';
-      });
-      renderTaskbar();
-    }
-
-    function minimizeWindow(winId) {
-      const el = document.getElementById(winId);
-      if (el) el.classList.add('hidden');
-      const w = STATE.windows.find(x => x.id === winId);
-      if (w) w.minimized = true;
-      renderTaskbar();
-    }
-
-    function maximizeWindow(winId) {
-      const el = document.getElementById(winId);
-      const w = STATE.windows.find(x => x.id === winId);
-      if (!el || !w) return;
-      w.maximized = !w.maximized;
-      if (w.maximized) {
-        el.style.left = '0px';
-        el.style.top = '0px';
-        el.style.width = '100vw';
-        el.style.height = 'calc(100vh - 48px)';
-        el.classList.add('!rounded-none');
-      } else {
-        el.style.left = w.x + 'px';
-        el.style.top = w.y + 'px';
-        el.style.width = w.w + 'px';
-        el.style.height = w.h + 'px';
-        el.classList.remove('!rounded-none');
-      }
-    }
-
-    function closeWindow(winId) {
-      const el = document.getElementById(winId);
-      if (el) el.remove();
-      STATE.windows = STATE.windows.filter(w => w.id !== winId);
-      renderTaskbar();
-    }
-
-    function minimizeAllWindows() {
-      STATE.windows.forEach(w => minimizeWindow(w.id));
-    }
-
-    function startWinDrag(e, winId) {
-      if (e.target.closest('button')) return;
-      const el = document.getElementById(winId);
-      const w = STATE.windows.find(x => x.id === winId);
-      if (!el || !w || w.maximized) return;
-
-      focusWindow(winId);
-      let sx = e.clientX || (e.touches && e.touches[0].clientX);
-      let sy = e.clientY || (e.touches && e.touches[0].clientY);
-      let ox = el.offsetLeft;
-      let oy = el.offsetTop;
-
-      function onMove(ev) {
-        let cx = ev.clientX || (ev.touches && ev.touches[0].clientX);
-        let cy = ev.clientY || (ev.touches && ev.touches[0].clientY);
-        w.x = ox + (cx - sx);
-        w.y = Math.max(0, oy + (cy - sy));
-        el.style.left = w.x + 'px';
-        el.style.top = w.y + 'px';
-      }
-      function onUp() {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-      }
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
-    }
-
-    /* Virtual Keyboard */
-    function initVirtualKeyboard() {
-      const normal = [
-        ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'],
-        ['Tab','q','w','e','r','t','y','u','i','o','p','[',']','\\'],
-        ['Caps','a','s','d','f','g','h','j','k','l',';','\'','Enter'],
-        ['Shift','z','x','c','v','b','n','m',',','.','/','Shift'],
-        ['Ctrl','Alt','Space','Copy','Paste']
-      ];
-      const shift = [
-        ['~','!','@','#','$','%','^','&','*','(',')','_','+','Backspace'],
-        ['Tab','Q','W','E','R','T','Y','U','I','O','P','{','}','|'],
-        ['Caps','A','S','D','F','G','H','J','K','L',':','"','Enter'],
-        ['Shift','Z','X','C','V','B','N','M','<','>','?','Shift'],
-        ['Ctrl','Alt','Space','Copy','Paste']
-      ];
-
-      const c = document.getElementById('keyboardKeys');
-      c.innerHTML = '';
-      const set = STATE.isShift ? shift : normal;
-
-      set.forEach(r => {
-        const row = document.createElement('div');
-        row.className = "flex gap-1 justify-center";
-        r.forEach(k => {
-          const btn = document.createElement('button');
-          btn.className = `p-2 rounded-lg bg-white/10 active:bg-blue-600 font-medium ${k === 'Space' ? 'flex-1' : (k.length > 1 ? 'px-3' : 'w-8')}`;
-          btn.innerText = k;
-          btn.onpointerdown = (ev) => {
-            ev.preventDefault();
-            handleKeyPress(k);
-          };
-          row.appendChild(btn);
-        });
-        c.appendChild(row);
-      });
-    }
-
-    function toggleVirtualKeyboard() {
-      document.getElementById('virtualKeyboard').classList.toggle('hidden');
-    }
-
-    function handleKeyPress(k) {
-      if (k === 'Shift') {
-        STATE.isShift = !STATE.isShift;
-        initVirtualKeyboard();
-        return;
-      }
-      if (k === 'Copy') { document.execCommand('copy'); return; }
-      if (k === 'Paste') { document.execCommand('paste'); return; }
-      if (k === 'Backspace') { document.execCommand('delete'); return; }
-      if (k === 'Enter') { document.execCommand('insertLineBreak'); return; }
-      if (k === 'Space') { document.execCommand('insertText', false, ' '); return; }
-      if (k === 'Tab') { document.execCommand('insertText', false, '  '); return; }
-      document.execCommand('insertText', false, k);
-    }
-
-    /* Virtual Precision Trackpad */
-    function initTrackpad() {
-      const area = document.getElementById('trackpadArea');
-      const cursor = document.getElementById('virtualCursor');
-      let touch = false, lx = 0, ly = 0;
-
-      area.addEventListener('touchstart', (e) => {
-        touch = true;
-        lx = e.touches[0].clientX;
-        ly = e.touches[0].clientY;
-        cursor.classList.remove('hidden');
-      });
-
-      area.addEventListener('touchmove', (e) => {
-        if (!touch) return;
-        const dx = (e.touches[0].clientX - lx) * 1.6;
-        const dy = (e.touches[0].clientY - ly) * 1.6;
-        STATE.virtualMouse.x = Math.max(0, Math.min(window.innerWidth - 8, STATE.virtualMouse.x + dx));
-        STATE.virtualMouse.y = Math.max(0, Math.min(window.innerHeight - 8, STATE.virtualMouse.y + dy));
-        cursor.style.left = STATE.virtualMouse.x + 'px';
-        cursor.style.top = STATE.virtualMouse.y + 'px';
-        lx = e.touches[0].clientX;
-        ly = e.touches[0].clientY;
-      });
-
-      document.getElementById('trackpadLeftClick').onclick = () => {
-        const el = document.elementFromPoint(STATE.virtualMouse.x, STATE.virtualMouse.y);
-        if (el) el.click();
-      };
-      document.getElementById('trackpadRightClick').onclick = () => {
-        const el = document.elementFromPoint(STATE.virtualMouse.x, STATE.virtualMouse.y);
-        if (el) el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: STATE.virtualMouse.x, clientY: STATE.virtualMouse.y }));
-      };
-    }
-
-    function toggleTrackpad() {
-      document.getElementById('touchTrackpad').classList.toggle('hidden');
-    }
-
-    function toggleTrackpadFloat() {
-      const tp = document.getElementById('touchTrackpad');
-      tp.classList.toggle('fixed');
-      tp.classList.toggle('bottom-14');
-      tp.classList.toggle('right-4');
-      tp.classList.toggle('w-72');
-      tp.classList.toggle('rounded-2xl');
-    }
-
-    /* Windows 11 UI Toggles */
-    function toggleStartMenu(force) {
-      const menu = document.getElementById('startMenu');
-      menu.classList.toggle('hidden', force !== undefined ? !force : undefined);
-    }
-
-    function toggleQuickSettings() {
-      document.getElementById('quickSettingsFlyout').classList.toggle('hidden');
-    }
-
-    function toggleWidgetsPane() {
-      const p = document.getElementById('widgetsPane');
-      p.classList.toggle('hidden');
-    }
-
-    function toggleCalendarFlyout() {
-      launchApp('settings');
-    }
-
-    function toggleTaskView() {
-      alert("Task View: " + STATE.windows.length + " running window instances.");
-    }
-
-    function adjustBrightness(val) {
-      document.getElementById('dimmerOverlay').style.opacity = (val / 100).toString();
-    }
-
-    function changeWallpaper(url) {
-      document.getElementById('desktop').style.backgroundImage = `url('${url}')`;
-    }
-
-    function handleLogout() {
-      sessionStorage.removeItem('cloudos_win11_user');
-      STATE.currentUser = null;
-      document.getElementById('authGate').classList.remove('hidden');
-      toggleStartMenu(false);
-    }
-
-    function calcPress(winId, val) {
-      const s = document.getElementById(winId + '_calc_scr');
-      if (val === 'C') s.value = '0';
-      else if (val === '=') {
-        try { s.value = eval(s.value); } catch(e) { s.value = 'Error'; }
-      } else { s.value = (s.value === '0') ? val : s.value + val; }
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    function windowAppBack(winId) {}
   </script>
 </body>
 </html>
