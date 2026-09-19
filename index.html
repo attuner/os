@@ -5,24 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>iPadOS Cloud Desktop</title>
 
-  <!-- Typography: Google Sans / Roboto scale with Apple San Francisco style weights -->
+  <!-- Google Sans / Roboto System Font Scale -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Real Word (.docx) Parsing Engine -->
+  <!-- Real Microsoft Word (.docx) Parsing Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
   <style>
     :root {
-      --font-stack: 'Roboto', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      --font-system: 'Roboto', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      --font-mono: 'Fira Code', monospace;
     }
     * {
-      font-family: var(--font-stack);
+      font-family: var(--font-system);
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       box-sizing: border-box;
@@ -30,48 +31,51 @@
     input, textarea, [contenteditable="true"], pre, code {
       user-select: text !important;
     }
-    /* iPad Mini 6 Ergonomics (8.3" 2266x1488, viewport 744x1133 pt) */
+    /* iPad Mini 6 Ergonomics (8.3" 744x1133 pt viewport) */
     @media (min-width: 744px) and (max-width: 1133px) {
-      .dock-item { width: 56px; height: 56px; }
-      .app-icon { width: 72px; height: 72px; }
+      .app-grid-icon { width: 68px; height: 68px; }
+      .dock-icon { width: 54px; height: 54px; }
     }
     .glass {
       background: rgba(255, 255, 255, 0.72);
       backdrop-filter: blur(28px);
       -webkit-backdrop-filter: blur(28px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.45);
     }
     .glass-dark {
-      background: rgba(28, 28, 30, 0.85);
-      backdrop-filter: blur(32px);
-      -webkit-backdrop-filter: blur(32px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(28, 28, 30, 0.88);
+      backdrop-filter: blur(36px);
+      -webkit-backdrop-filter: blur(36px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
     }
-    .dock-blur {
+    .dock-glass {
       background: rgba(255, 255, 255, 0.35);
-      backdrop-filter: blur(40px) saturate(180%);
-      -webkit-backdrop-filter: blur(40px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(45px) saturate(190%);
+      -webkit-backdrop-filter: blur(45px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.4);
     }
-    /* Custom clean scrollbars */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(140, 140, 150, 0.4); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(140, 140, 150, 0.35); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(140, 140, 150, 0.6); }
   </style>
 </head>
 
 <body class="h-screen w-screen overflow-hidden bg-black text-slate-900 antialiased flex flex-col relative select-none">
 
-  <!-- ==================== IPAD TOP STATUS BAR ==================== -->
-  <header id="statusBar" class="h-8 w-full text-white flex items-center justify-between px-5 text-xs font-semibold z-50 transition-all select-none">
+  <!-- ==================== TOP SYSTEM STATUS BAR ==================== -->
+  <header id="statusBar" class="h-8 w-full text-white flex items-center justify-between px-5 text-xs font-medium z-50 transition-all select-none">
     <div class="flex items-center gap-3">
-      <span id="statusClock">9:41</span>
-      <span id="statusDate" class="text-[11px] font-normal text-white/80">Tue Sep 20</span>
+      <span id="statusClock" class="font-bold">9:41 AM</span>
+      <span id="statusDate" class="text-[11px] text-white/80">Tue Sep 20</span>
     </div>
-    <!-- Top Notch / Dynamic Island Bar -->
-    <div onclick="toggleSpotlight()" class="cursor-pointer px-4 py-0.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 text-[11px] text-white/70 flex items-center gap-1.5 shadow-sm">
-      <i data-lucide="search" class="w-3 h-3"></i> Spotlight
+
+    <!-- Spotlight Search Trigger (Dynamic Island / Notch Pill) -->
+    <div onclick="toggleSpotlight()" class="cursor-pointer px-4 py-0.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 text-[11px] text-white/80 flex items-center gap-1.5 shadow-sm transition active:scale-95">
+      <i data-lucide="search" class="w-3 h-3 text-white/60"></i>
+      <span>Spotlight</span>
     </div>
+
     <div class="flex items-center gap-3.5">
       <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
       <i data-lucide="battery-charging" class="w-4 h-4"></i>
@@ -81,135 +85,125 @@
     </div>
   </header>
 
-  <!-- ==================== MAIN IPAD DESKTOP CANVAS ==================== -->
+  <!-- ==================== DESKTOP WORKSPACE ==================== -->
   <main id="desktop" class="relative flex-1 w-full overflow-hidden bg-cover bg-center transition-all duration-700"
-       style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564');">
+        style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564');"
+        oncontextmenu="handleDesktopContext(event)">
 
     <!-- Screen Brightness Dimmer Overlay -->
     <div id="dimmerOverlay" class="absolute inset-0 bg-black pointer-events-none z-40 transition-opacity duration-300 opacity-0"></div>
 
-    <!-- Live Desktop Widgets (Clock + Calendar + Interactive Tasks) -->
+    <!-- Live Desktop Widgets (Clock + Calendar + Quick Tasks) -->
     <div id="widgetsColumn" class="absolute top-4 left-6 flex flex-col gap-4 max-w-xs w-full z-10 pointer-events-none [&>*]:pointer-events-auto">
-      <!-- Calendar/Clock Widget -->
+      <!-- Calendar Widget -->
       <div class="glass rounded-3xl p-4 shadow-xl border border-white/60 text-slate-800 flex items-center justify-between">
         <div>
           <div id="widgetLargeTime" class="text-3xl font-light tracking-tight">09:41</div>
-          <div id="widgetFullDate" class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Tuesday, Sep 20</div>
+          <div id="widgetFullDate" class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Tuesday, Sep 20</div>
         </div>
         <div class="w-12 h-12 rounded-2xl bg-blue-600/10 text-blue-600 flex flex-col items-center justify-center font-bold">
-          <span class="text-[10px] uppercase">Sep</span>
-          <span class="text-lg leading-none" id="widgetDayNum">20</span>
+          <span class="text-[9px] uppercase tracking-wider">Sep</span>
+          <span class="text-xl leading-none" id="widgetDayNum">20</span>
         </div>
       </div>
 
-      <!-- Real Interactive Quick Tasks Widget -->
+      <!-- Real Interactive Tasks Widget -->
       <div class="glass rounded-3xl p-4 shadow-xl border border-white/60 text-slate-800">
         <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-300/60">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-blue-600"></i> Tasks
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-blue-600"></i> Reminders
           </span>
-          <button onclick="launchApp('tasks')" class="text-xs text-blue-600 font-bold hover:underline">+ Open</button>
+          <button onclick="launchApp('reminders')" class="text-xs text-blue-600 font-bold hover:underline">+ Open</button>
         </div>
-        <div id="widgetTaskList" class="space-y-1.5 max-h-36 overflow-y-auto text-xs">
-          <!-- Populated live from state -->
-        </div>
+        <div id="widgetTaskList" class="space-y-1.5 max-h-36 overflow-y-auto text-xs"></div>
         <div class="mt-2 pt-2 border-t border-slate-300/40 flex gap-1">
-          <input id="widgetNewTaskInput" type="text" placeholder="Add task..." onkeydown="if(event.key==='Enter') addWidgetTask()"
-                 class="w-full bg-white/50 border border-white/40 rounded-lg px-2 py-1 text-xs outline-none focus:bg-white" />
-          <button onclick="addWidgetTask()" class="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold">+</button>
+          <input id="widgetNewTaskInput" type="text" placeholder="Add reminder..." onkeydown="if(event.key==='Enter') addWidgetTask()"
+                 class="w-full bg-white/60 border border-white/40 rounded-xl px-2.5 py-1 text-xs outline-none focus:bg-white text-slate-800 placeholder-slate-400" />
+          <button onclick="addWidgetTask()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold">+</button>
         </div>
       </div>
     </div>
 
     <!-- Desktop Apps Grid (iPad Springboard) -->
-    <div id="appsGrid" class="absolute top-4 right-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-6 p-2 z-10">
-      <!-- Generated via JS -->
-    </div>
+    <div id="appsGrid" class="absolute top-4 right-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-6 p-2 z-10 max-h-[82vh] overflow-y-auto"></div>
 
     <!-- Windows Workspace (Stage Manager Multi-Window Canvas) -->
     <div id="windowsContainer" class="absolute inset-0 pointer-events-none [&>*]:pointer-events-auto overflow-hidden z-20"></div>
 
     <!-- Virtual Mouse Cursor (Controlled by Trackpad) -->
     <div id="virtualCursor" class="hidden absolute w-4 h-4 -top-2 -left-2 pointer-events-none z-[9999] transition-[top,left] duration-75">
-      <svg class="w-6 h-6 text-blue-600 drop-shadow-xl" viewBox="0 0 24 24" fill="currentColor">
+      <svg class="w-6 h-6 text-blue-600 drop-shadow-2xl" viewBox="0 0 24 24" fill="currentColor">
         <path d="M4 2l16 11-7.5 1.5 4.5 7.5-2.5 1.5-4.5-7.5L4 20V2z"/>
       </svg>
     </div>
 
     <!-- Context Menu -->
-    <div id="contextMenu" class="hidden absolute glass-dark text-white rounded-2xl shadow-2xl py-1.5 w-48 z-[9990] text-xs border border-white/20">
+    <div id="contextMenu" class="hidden absolute glass-dark text-white rounded-2xl shadow-2xl py-1.5 w-52 z-[9990] text-xs border border-white/20">
       <div id="contextMenuItems" class="divide-y divide-white/10"></div>
     </div>
   </main>
 
   <!-- ==================== IPAD CONTROL CENTER ==================== -->
-  <aside id="controlCenter" class="hidden absolute top-10 right-4 w-80 glass-dark text-white rounded-3xl p-4 shadow-2xl z-[9980] border border-white/20 space-y-4 transition-all">
+  <aside id="controlCenter" class="hidden absolute top-10 right-4 w-84 glass-dark text-white rounded-3xl p-5 shadow-2xl z-[9980] border border-white/20 space-y-4 transition-all">
     <div class="flex items-center justify-between pb-2 border-b border-white/10">
       <span class="text-sm font-semibold">Control Center</span>
       <button onclick="toggleControlCenter()" class="text-xs text-white/60 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <!-- Quick Connectivity Toggles -->
     <div class="grid grid-cols-2 gap-2">
-      <div class="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2.5 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="wifi" class="w-4 h-4"></i>
-        <div class="text-xs leading-tight"><div class="font-medium">Wi-Fi</div><div class="text-[10px] text-white/60">Connected</div></div>
+      <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-2.5 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
+        <i data-lucide="wifi" class="w-4 h-4 text-white"></i>
+        <div class="text-xs leading-tight"><div class="font-medium">Wi-Fi</div><div class="text-[10px] text-white/60">Cloud Connected</div></div>
       </div>
-      <div class="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2.5 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
-        <i data-lucide="bluetooth" class="w-4 h-4"></i>
-        <div class="text-xs leading-tight"><div class="font-medium">Bluetooth</div><div class="text-[10px] text-white/60">On</div></div>
+      <div class="bg-white/10 p-3 rounded-2xl flex items-center gap-2.5 cursor-pointer hover:bg-white/15" onclick="this.classList.toggle('bg-blue-600')">
+        <i data-lucide="bluetooth" class="w-4 h-4 text-white"></i>
+        <div class="text-xs leading-tight"><div class="font-medium">Bluetooth</div><div class="text-[10px] text-white/60">Active</div></div>
       </div>
     </div>
-    <!-- Sliders: Brightness & Volume -->
-    <div class="space-y-2 text-xs">
+    <div class="space-y-3 text-xs">
       <div>
         <div class="flex justify-between mb-1 text-white/70"><span>Display Brightness</span><i data-lucide="sun" class="w-3.5 h-3.5"></i></div>
-        <input type="range" min="0" max="80" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-blue-500 cursor-pointer" />
+        <input type="range" min="0" max="85" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-blue-500 cursor-pointer" />
       </div>
       <div>
-        <div class="flex justify-between mb-1 text-white/70"><span>Audio Volume</span><i data-lucide="volume-2" class="w-3.5 h-3.5"></i></div>
-        <input type="range" min="0" max="100" value="80" oninput="adjustVolume(this.value)" class="w-full accent-blue-500 cursor-pointer" />
+        <div class="flex justify-between mb-1 text-white/70"><span>Sound Output</span><i data-lucide="volume-2" class="w-3.5 h-3.5"></i></div>
+        <input type="range" min="0" max="100" value="85" class="w-full accent-blue-500 cursor-pointer" />
       </div>
     </div>
-    <!-- Quick Tools -->
     <div class="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 text-center text-xs">
-      <button onclick="toggleVirtualKeyboard()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 flex flex-col items-center gap-1">
+      <button onclick="toggleVirtualKeyboard()" class="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 flex flex-col items-center gap-1 transition">
         <i data-lucide="keyboard" class="w-4 h-4"></i><span class="text-[10px]">Keyboard</span>
       </button>
-      <button onclick="toggleTrackpad()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 flex flex-col items-center gap-1">
+      <button onclick="toggleTrackpad()" class="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 flex flex-col items-center gap-1 transition">
         <i data-lucide="mouse" class="w-4 h-4"></i><span class="text-[10px]">Trackpad</span>
       </button>
-      <button onclick="toggleFullscreen()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 flex flex-col items-center gap-1">
-        <i data-lucide="maximize" class="w-4 h-4"></i><span class="text-[10px]">Expand</span>
+      <button onclick="toggleFullscreen()" class="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 flex flex-col items-center gap-1 transition">
+        <i data-lucide="maximize" class="w-4 h-4"></i><span class="text-[10px]">Fullscreen</span>
       </button>
     </div>
   </aside>
 
   <!-- ==================== SPOTLIGHT SEARCH ==================== -->
-  <div id="spotlightModal" class="hidden fixed inset-0 z-[9995] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20" onclick="if(event.target===this) toggleSpotlight()">
+  <div id="spotlightModal" class="hidden fixed inset-0 z-[9995] bg-black/60 backdrop-blur-md flex items-start justify-center pt-24" onclick="if(event.target===this) toggleSpotlight()">
     <div class="w-full max-w-md glass-dark rounded-3xl p-4 text-white shadow-2xl border border-white/20">
       <div class="flex items-center gap-2.5 pb-3 border-b border-white/10">
         <i data-lucide="search" class="w-4 h-4 text-white/60"></i>
         <input id="spotlightInput" type="text" placeholder="Search apps, drive files, tools..." oninput="runSpotlightSearch(this.value)"
-               class="flex-1 bg-transparent text-sm outline-none text-white placeholder-white/50" autofocus />
+               class="flex-1 bg-transparent text-sm outline-none text-white placeholder-white/40" autofocus />
         <button onclick="toggleSpotlight()" class="text-xs text-white/60 hover:text-white">Esc</button>
       </div>
-      <div id="spotlightResults" class="mt-3 space-y-1.5 max-h-60 overflow-y-auto text-xs">
-        <!-- Live search matches -->
-      </div>
+      <div id="spotlightResults" class="mt-3 space-y-1.5 max-h-64 overflow-y-auto text-xs"></div>
     </div>
   </div>
 
   <!-- ==================== IPAD FLOATING DOCK ==================== -->
-  <footer id="dockContainer" class="w-full pb-2 flex justify-center z-30 pointer-events-none">
-    <div id="dock" class="dock-blur rounded-3xl px-3 py-2 flex items-center gap-2.5 shadow-2xl pointer-events-auto border border-white/40 transition-all">
-      <!-- Populated dynamically: pinned apps + running apps divider -->
-    </div>
+  <footer id="dockContainer" class="w-full pb-3 flex justify-center z-30 pointer-events-none">
+    <div id="dock" class="dock-glass rounded-3xl px-3 py-2 flex items-center gap-2.5 shadow-2xl pointer-events-auto border border-white/40 transition-all max-w-[94vw] overflow-x-auto"></div>
   </footer>
 
-  <!-- ==================== TOUCH TRACKPAD (TABLETS & PHONES) ==================== -->
+  <!-- ==================== TOUCH TRACKPAD ==================== -->
   <div id="touchTrackpad" class="hidden w-full h-[20vh] bg-slate-900 border-t border-slate-700 flex flex-col z-40 transition-all select-none">
-    <div class="flex justify-between items-center px-4 py-1 bg-slate-800 text-xs text-slate-300">
-      <span class="flex items-center gap-1"><i data-lucide="mouse-pointer" class="w-3.5 h-3.5"></i> iPad Virtual Precision Mouse</span>
+    <div class="flex justify-between items-center px-4 py-1.5 bg-slate-800 text-xs text-slate-300">
+      <span class="flex items-center gap-1.5"><i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-blue-400"></i> iPad Virtual Precision Mouse</span>
       <div class="flex items-center gap-2">
         <button onclick="toggleTrackpadFloat()" class="hover:text-white px-2 py-0.5 rounded bg-slate-700 text-[10px]">Float / Dock</button>
         <button onclick="toggleTrackpad()" class="hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
@@ -227,21 +221,21 @@
   </div>
 
   <!-- ==================== FLOATING VIRTUAL KEYBOARD ==================== -->
-  <div id="virtualKeyboard" class="hidden fixed z-[9998] glass-dark text-white rounded-3xl shadow-2xl border border-white/20 p-2.5 flex flex-col gap-1.5 w-[94vw] max-w-xl touch-none"
-       style="bottom: 70px; left: 50%; transform: translateX(-50%);">
+  <div id="virtualKeyboard" class="hidden fixed z-[9998] glass-dark text-white rounded-3xl shadow-2xl border border-white/20 p-3 flex flex-col gap-1.5 w-[94vw] max-w-xl touch-none"
+       style="bottom: 72px; left: 50%; transform: translateX(-50%);">
     <div class="flex items-center justify-between pb-1 px-2 border-b border-white/10 cursor-move" id="kbHeader">
       <span class="text-xs font-semibold text-white/70 flex items-center gap-1.5">
         <i data-lucide="keyboard" class="w-3.5 h-3.5"></i> iPad On-Screen Keyboard
       </span>
       <div class="flex items-center gap-1">
-        <button onclick="document.activeElement?.blur();" class="text-[10px] px-2 py-0.5 rounded bg-white/10">Device Keyboard</button>
+        <button onclick="document.activeElement?.blur();" class="text-[10px] px-2 py-0.5 rounded bg-white/10">Dismiss Focus</button>
         <button onclick="toggleVirtualKeyboard()" class="text-white/60 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
       </div>
     </div>
     <div id="keyboardKeys" class="flex flex-col gap-1 text-xs"></div>
   </div>
 
-  <!-- ==================== AUTH GATE (LOGIN / REGISTER / RESET) ==================== -->
+  <!-- ==================== AUTH GATE MODAL ==================== -->
   <div id="authGate" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
     <div class="glass-dark border border-white/20 rounded-3xl p-6 sm:p-8 w-full max-w-md text-white shadow-2xl">
       <div class="flex items-center gap-3 mb-5">
@@ -250,53 +244,71 @@
         </div>
         <div>
           <h1 class="text-xl font-bold tracking-tight">iPadOS Cloud Desktop</h1>
-          <p class="text-xs text-white/60">Powered by Google Drive & Sheet storage</p>
+          <p class="text-xs text-white/60">Personal Google Drive & Sheet storage system</p>
         </div>
       </div>
 
-      <!-- Backend Script Setup Link -->
+      <!-- Google Apps Script URL Config -->
       <div class="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs space-y-1">
-        <label class="font-medium text-blue-300">Google Apps Script URL:</label>
+        <label class="font-medium text-blue-300">Google Apps Script Web App Endpoint:</label>
         <input id="cfgAppsScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"
                class="w-full bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" />
       </div>
 
       <!-- Tab Switcher -->
       <div class="flex rounded-xl bg-white/10 p-1 mb-4 text-xs">
-        <button id="authTabLogin" onclick="switchAuthTab('login')" class="flex-1 py-1.5 rounded-lg font-medium bg-blue-600 text-white transition">Sign In</button>
-        <button id="authTabRegister" onclick="switchAuthTab('register')" class="flex-1 py-1.5 rounded-lg font-medium text-white/60 hover:text-white transition">Register</button>
-        <button id="authTabForgot" onclick="switchAuthTab('forgot')" class="flex-1 py-1.5 rounded-lg font-medium text-white/60 hover:text-white transition">Reset</button>
+        <button id="authTabLogin" type="button" onclick="switchAuthTab('login')" class="flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition">Sign In</button>
+        <button id="authTabRegister" type="button" onclick="switchAuthTab('register')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Register</button>
+        <button id="authTabForgot" type="button" onclick="switchAuthTab('forgot')" class="flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition">Reset</button>
       </div>
 
-      <!-- Login Form -->
-      <form id="formLogin" onsubmit="handleAuthSubmit(event, 'login')" class="space-y-3">
-        <input required id="loginUser" type="text" placeholder="Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        <input required id="loginPass" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-xl text-xs shadow-lg transition">Sign In</button>
-      </form>
+      <!-- Sign In Form -->
+      <div id="containerLogin" class="space-y-3">
+        <div>
+          <label class="text-xs text-white/70 block mb-1">Username</label>
+          <input id="loginUser" type="text" placeholder="Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="text-xs text-white/70 block mb-1">Password</label>
+          <input id="loginPass" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+        </div>
+        <button id="btnLoginAction" type="button" onclick="submitAuth('login')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Sign In</button>
+      </div>
 
       <!-- Register Form -->
-      <form id="formRegister" onsubmit="handleAuthSubmit(event, 'register')" class="space-y-3 hidden">
-        <input required id="regUser" type="text" placeholder="Desired Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        <input required id="regEmail" type="email" placeholder="Your Email Address" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        <input required id="regPass" type="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-xl text-xs shadow-lg transition">Create Account</button>
-      </form>
+      <div id="containerRegister" class="space-y-3 hidden">
+        <div>
+          <label class="text-xs text-white/70 block mb-1">Desired Username</label>
+          <input id="regUser" type="text" placeholder="Enter username" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="text-xs text-white/70 block mb-1">Email Address (For Password Recovery)</label>
+          <input id="regEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="text-xs text-white/70 block mb-1">Create Password</label>
+          <input id="regPass" type="password" placeholder="Create password" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+        </div>
+        <button id="btnRegisterAction" type="button" onclick="submitAuth('register')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Create Cloud Account</button>
+      </div>
 
       <!-- Forgot Password Form -->
-      <form id="formForgot" onsubmit="handleAuthSubmit(event, 'forgot')" class="space-y-3 hidden">
-        <input required id="forgotEmail" type="email" placeholder="Enter Registered Email" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
-        <p class="text-[11px] text-white/50">Your password will be retrieved and emailed directly to your inbox via Google Apps Script.</p>
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-xl text-xs shadow-lg transition">Send Password to Email</button>
-      </form>
+      <div id="containerForgot" class="space-y-3 hidden">
+        <div>
+          <label class="text-xs text-white/70 block mb-1">Registered Email Address</label>
+          <input id="forgotEmail" type="email" placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500" />
+        </div>
+        <p class="text-[11px] text-white/50">Your password will be retrieved and emailed directly to your inbox through Google Apps Script MailApp.</p>
+        <button id="btnForgotAction" type="button" onclick="submitAuth('forgot')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-xs shadow-lg transition active:scale-95">Send Password to Email</button>
+      </div>
 
       <div id="authStatus" class="mt-3 text-xs text-center text-amber-400 min-h-4"></div>
     </div>
   </div>
 
-  <!-- ==================== JAVASCRIPT SYSTEM ENGINE ==================== -->
+  <!-- ==================== CLIENT JAVASCRIPT SYSTEM ENGINE ==================== -->
   <script>
-    /* State Management */
+    /* Global Application State */
     const STATE = {
       // PRE-ENTER YOUR GOOGLE APPS SCRIPT URL HERE:
       appsScriptUrl: "https://script.google.com/macros/s/AKfycbxCwpJad_RjrkWSU9vfxmXrAVmk_3ixIz1LoA8xoHkshvxF7ERR35MMw7yw7eVNWYmowQ/exec",
@@ -305,37 +317,53 @@
       activeWinId: null,
       installedApps: [],
       tasks: [
-        { id: '1', Task: 'Review project files in Drive', Completed: 'false' },
-        { id: '2', Task: 'Draft summary in Cloud Docs', Completed: 'true' }
+        { id: '1', Task: 'Review project files in Google Drive', Completed: 'false' },
+        { id: '2', Task: 'Draft report in Cloud Pages', Completed: 'true' }
       ],
-      contacts: [],
-      reminders: [],
-      driveFiles: [],
+      contacts: [
+        { id: '1', Name: 'John Appleseed', Phone: '+1 555-0192', Email: 'john@icloud.com', Notes: 'Lead Architect' }
+      ],
+      notes: [
+        { id: '1', Title: 'Meeting Summary', Content: 'Discussed cloud operating system integration with Drive & Sheets.', Color: 'bg-amber-100' }
+      ],
       bookmarks: [
         { title: 'Google', url: 'https://www.bing.com' },
         { title: 'Wikipedia', url: 'https://en.wikipedia.org' }
       ],
+      driveFiles: [],
       virtualMouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
       isShift: false,
       historyStack: []
     };
 
-    /* App Catalog */
-    const APPS = {
-      drive: { name: 'Google Drive', icon: 'hard-drive', color: 'text-amber-500', bg: 'bg-amber-500/10' },
-      word: { name: 'Cloud Docs', icon: 'file-text', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-      code: { name: 'Code Studio', icon: 'terminal', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-      browser: { name: 'Safari Web', icon: 'compass', color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
-      youtube: { name: 'YouTube Pro', icon: 'play-square', color: 'text-red-500', bg: 'bg-red-500/10' },
-      scanner: { name: 'Doc Scanner', icon: 'scan-line', color: 'text-purple-500', bg: 'bg-purple-500/10' },
-      media: { name: 'Media Player', icon: 'play-circle', color: 'text-pink-500', bg: 'bg-pink-500/10' },
-      installer: { name: 'App Installer', icon: 'plus-square', color: 'text-orange-500', bg: 'bg-orange-500/10' },
-      tasks: { name: 'Reminders & Tasks', icon: 'check-square', color: 'text-teal-500', bg: 'bg-teal-500/10' },
-      contacts: { name: 'Contacts', icon: 'users', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-      calculator: { name: 'Calculator', icon: 'calculator', color: 'text-slate-400', bg: 'bg-slate-500/10' }
+    /* Complete iOS Desktop Default Applications Catalog */
+    const DEFAULT_IOS_APPS = {
+      files: { name: 'Files', icon: 'folder', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+      pages: { name: 'Pages', icon: 'file-text', color: 'text-orange-500', bg: 'bg-orange-500/10' },
+      safari: { name: 'Safari', icon: 'compass', color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+      mail: { name: 'Mail', icon: 'mail', color: 'text-blue-400', bg: 'bg-blue-400/10' },
+      notes: { name: 'Notes', icon: 'edit-3', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+      reminders: { name: 'Reminders', icon: 'check-circle-2', color: 'text-orange-400', bg: 'bg-orange-400/10' },
+      calendar: { name: 'Calendar', icon: 'calendar', color: 'text-red-500', bg: 'bg-red-500/10' },
+      photos: { name: 'Photos', icon: 'image', color: 'text-purple-500', bg: 'bg-purple-500/10' },
+      camera: { name: 'Camera & Scanner', icon: 'camera', color: 'text-slate-400', bg: 'bg-slate-400/10' },
+      music: { name: 'Music', icon: 'music', color: 'text-pink-500', bg: 'bg-pink-500/10' },
+      videos: { name: 'Videos', icon: 'film', color: 'text-blue-600', bg: 'bg-blue-600/10' },
+      youtube: { name: 'YouTube', icon: 'play-square', color: 'text-red-600', bg: 'bg-red-600/10' },
+      facetime: { name: 'Contacts', icon: 'users', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+      maps: { name: 'Maps', icon: 'map-pin', color: 'text-emerald-600', bg: 'bg-emerald-600/10' },
+      weather: { name: 'Weather', icon: 'cloud-sun', color: 'text-sky-400', bg: 'bg-sky-400/10' },
+      stocks: { name: 'Stocks', icon: 'trending-up', color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+      voice: { name: 'Voice Memos', icon: 'mic', color: 'text-red-400', bg: 'bg-red-400/10' },
+      clock: { name: 'Clock', icon: 'clock', color: 'text-slate-300', bg: 'bg-slate-300/10' },
+      calculator: { name: 'Calculator', icon: 'calculator', color: 'text-amber-600', bg: 'bg-amber-600/10' },
+      xcode: { name: 'Xcode Studio', icon: 'terminal', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+      terminal: { name: 'Terminal', icon: 'cpu', color: 'text-green-500', bg: 'bg-green-500/10' },
+      appstore: { name: 'App Store', icon: 'shopping-bag', color: 'text-sky-500', bg: 'bg-sky-500/10' },
+      settings: { name: 'Settings', icon: 'settings', color: 'text-slate-400', bg: 'bg-slate-400/10' }
     };
 
-    /* System Boot */
+    /* System Boot Sequence */
     window.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       initClocks();
@@ -349,7 +377,7 @@
 
     /* Live Clocks */
     function initClocks() {
-      const update = () => {
+      const tick = () => {
         const d = new Date();
         const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const dateShort = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -360,11 +388,11 @@
         document.getElementById('widgetFullDate').innerText = dateFull;
         document.getElementById('widgetDayNum').innerText = d.getDate();
       };
-      update();
-      setInterval(update, 1000);
+      tick();
+      setInterval(tick, 1000);
     }
 
-    /* Auth & Persistence */
+    /* Auth & Session State */
     function checkSession() {
       const savedUser = sessionStorage.getItem('cloudos_user');
       const savedScript = localStorage.getItem('cloudos_script_url') || STATE.appsScriptUrl;
@@ -380,21 +408,29 @@
     }
 
     function switchAuthTab(tab) {
-      document.getElementById('formLogin').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('formRegister').classList.toggle('hidden', tab !== 'register');
-      document.getElementById('formForgot').classList.toggle('hidden', tab !== 'forgot');
-      ['Login', 'Register', 'Forgot'].forEach(t => {
+      document.getElementById('containerLogin').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('containerRegister').classList.toggle('hidden', tab !== 'register');
+      document.getElementById('containerForgot').classList.toggle('hidden', tab !== 'forgot');
+
+      const tabs = ['Login', 'Register', 'Forgot'];
+      tabs.forEach(t => {
         const btn = document.getElementById('authTab' + t);
-        btn.className = (t.toLowerCase() === tab) ? 'flex-1 py-1.5 rounded-lg font-medium bg-blue-600 text-white transition' : 'flex-1 py-1.5 rounded-lg font-medium text-white/60 hover:text-white transition';
+        if (t.toLowerCase() === tab) {
+          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition';
+        } else {
+          btn.className = 'flex-1 py-1.5 rounded-lg font-semibold text-white/60 hover:text-white transition';
+        }
       });
+      document.getElementById('authStatus').innerText = '';
     }
 
     async function apiCall(action, payload = {}) {
       const url = document.getElementById('cfgAppsScriptUrl').value.trim() || STATE.appsScriptUrl;
-      if (!url) throw new Error("Enter your Google Apps Script Web App URL.");
+      if (!url) throw new Error("Please enter your Google Apps Script Web App URL.");
       localStorage.setItem('cloudos_script_url', url);
       STATE.appsScriptUrl = url;
 
+      // Use text/plain to prevent CORS preflight OPTIONS requests from failing
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -403,49 +439,59 @@
       return await res.json();
     }
 
-    async function handleAuthSubmit(e, type) {
-      e.preventDefault();
+    async function submitAuth(type) {
       const status = document.getElementById('authStatus');
-      status.innerText = "Processing request...";
+      status.innerText = "Connecting to CloudOS...";
+
       try {
         if (type === 'login') {
-          const res = await apiCall('login', {
-            username: document.getElementById('loginUser').value,
-            password: document.getElementById('loginPass').value
-          });
+          const u = document.getElementById('loginUser').value.trim();
+          const p = document.getElementById('loginPass').value.trim();
+          if (!u || !p) { status.innerText = "Enter username and password."; return; }
+          const res = await apiCall('login', { username: u, password: p });
           if (res.status === 'success') {
             sessionStorage.setItem('cloudos_user', JSON.stringify(res.user));
             checkSession();
           } else { status.innerText = res.message; }
         } else if (type === 'register') {
-          const res = await apiCall('register', {
-            username: document.getElementById('regUser').value,
-            email: document.getElementById('regEmail').value,
-            password: document.getElementById('regPass').value
-          });
+          const u = document.getElementById('regUser').value.trim();
+          const e = document.getElementById('regEmail').value.trim();
+          const p = document.getElementById('regPass').value.trim();
+          if (!u || !e || !p) { status.innerText = "Please complete all fields."; return; }
+          const res = await apiCall('register', { username: u, email: e, password: p });
           if (res.status === 'success') {
             sessionStorage.setItem('cloudos_user', JSON.stringify(res.user));
             checkSession();
           } else { status.innerText = res.message; }
         } else if (type === 'forgot') {
-          const res = await apiCall('forgot_password', { email: document.getElementById('forgotEmail').value });
+          const e = document.getElementById('forgotEmail').value.trim();
+          if (!e) { status.innerText = "Enter your registered email address."; return; }
+          const res = await apiCall('forgot_password', { email: e });
           status.innerText = res.message;
         }
-      } catch (err) { status.innerText = "Error: " + err.message; }
+      } catch (err) {
+        status.innerText = "Error: " + err.message;
+      }
     }
 
     async function syncCloudData() {
       if (!STATE.currentUser) return;
       try {
-        const [tasksRes, appsRes, driveRes] = await Promise.all([
+        const [tasksRes, appsRes, driveRes, notesRes, contactsRes] = await Promise.all([
           apiCall('get_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks' }),
           apiCall('get_apps', { username: STATE.currentUser.username }),
-          apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId })
+          apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId }),
+          apiCall('get_sheet', { username: STATE.currentUser.username, sheetName: 'Notes' }),
+          apiCall('get_sheet', { username: STATE.currentUser.username, sheetName: 'Contacts' })
         ]);
         if (tasksRes.data && tasksRes.data.length) { STATE.tasks = tasksRes.data; renderWidgetTasks(); }
         if (appsRes.apps) { STATE.installedApps = appsRes.apps; renderHomeScreen(); renderDock(); }
         if (driveRes.files) { STATE.driveFiles = driveRes.files; }
-      } catch (e) { console.warn("Cloud sync warning:", e); }
+        if (notesRes.data && notesRes.data.length) { STATE.notes = notesRes.data; }
+        if (contactsRes.data && contactsRes.data.length) { STATE.contacts = contactsRes.data; }
+      } catch (e) {
+        console.warn("Cloud sync warning:", e);
+      }
     }
 
     /* Springboard Home Screen */
@@ -453,7 +499,7 @@
       const grid = document.getElementById('appsGrid');
       grid.innerHTML = '';
       const all = [
-        ...Object.keys(APPS).map(k => ({ id: k, ...APPS[k], custom: false })),
+        ...Object.keys(DEFAULT_IOS_APPS).map(k => ({ id: k, ...DEFAULT_IOS_APPS[k], custom: false })),
         ...STATE.installedApps.map(a => ({ id: a.appId, name: a.name, icon: a.icon, color: 'text-purple-400', bg: 'bg-purple-500/10', custom: true, meta: a }))
       ];
 
@@ -461,8 +507,8 @@
         const card = document.createElement('div');
         card.className = "flex flex-col items-center cursor-pointer active:scale-95 transition text-center group";
         card.innerHTML = `
-          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl glass flex items-center justify-center shadow-lg mb-1.5 border border-white/50 group-hover:scale-105 transition">
-            <i data-lucide="${app.icon \vert{}\vert{} 'box'}" class="w-7 h-7 sm:w-8 sm:h-8 ${app.color}"></i>
+          <div class="app-grid-icon w-14 h-14 sm:w-16 sm:h-16 rounded-3xl glass flex items-center justify-center shadow-lg mb-1.5 border border-white/50 group-hover:scale-105 transition">
+            <i data-lucide="${app.icon || 'box'}" class="w-7 h-7 sm:w-8 sm:h-8 ${app.color}"></i>
           </div>
           <span class="text-xs font-medium text-white drop-shadow truncate w-16 sm:w-20">${app.name}</span>
         `;
@@ -472,27 +518,25 @@
       lucide.createIcons();
     }
 
-    /* iPad Floating Blur Dock */
+    /* iPad Floating Dock */
     function renderDock() {
       const dock = document.getElementById('dock');
       dock.innerHTML = '';
-      const pinned = ['drive', 'word', 'browser', 'code', 'youtube', 'scanner'];
+      const pinned = ['files', 'safari', 'pages', 'mail', 'notes', 'photos', 'music'];
 
       pinned.forEach(id => {
-        const app = APPS[id];
+        const app = DEFAULT_IOS_APPS[id];
         const btn = document.createElement('button');
-        btn.className = "dock-item w-12 h-12 rounded-2xl glass flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition";
+        btn.className = "dock-icon w-12 h-12 rounded-2xl glass flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition";
         btn.innerHTML = `<i data-lucide="${app.icon}" class="w-6 h-6 ${app.color}"></i>`;
         btn.onclick = () => launchApp(id);
         dock.appendChild(btn);
       });
 
-      // Divider
       const sep = document.createElement('div');
       sep.className = "w-px h-8 bg-white/30 mx-1";
       dock.appendChild(sep);
 
-      // Running / Active Instance Shortcuts
       STATE.windows.forEach(w => {
         const rBtn = document.createElement('button');
         rBtn.className = `w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition ${w.id === STATE.activeWinId ? 'bg-white/40 ring-2 ring-white' : 'glass hover:scale-105'}`;
@@ -503,38 +547,37 @@
       lucide.createIcons();
     }
 
-    /* Stage Manager Window Multitasking Engine */
+    /* Stage Manager Window Engine */
     function launchApp(appKey, customMeta = null) {
       const winId = 'win_' + Date.now();
       const isMobile = window.innerWidth < 768;
       const isIpadMini = window.innerWidth >= 744 && window.innerWidth <= 1133;
 
-      const appMeta = customMeta ? customMeta : APPS[appKey];
+      const appMeta = customMeta ? customMeta : DEFAULT_IOS_APPS[appKey];
       const winObj = {
         id: winId,
         appKey: appKey,
-        title: appMeta ? appMeta.name : 'App',
+        title: appMeta ? appMeta.name : 'Application',
         icon: appMeta ? appMeta.icon : 'box',
         minimized: false,
         maximized: isMobile,
-        x: isMobile ? 0 : 40 + (STATE.windows.length * 30),
-        y: isMobile ? 0 : 35 + (STATE.windows.length * 30),
+        x: isMobile ? 0 : 40 + (STATE.windows.length * 28),
+        y: isMobile ? 0 : 35 + (STATE.windows.length * 28),
         w: isMobile ? window.innerWidth : (isIpadMini ? 680 : 760),
-        h: isMobile ? window.innerHeight - 80 : 520
+        h: isMobile ? window.innerHeight - 80 : 530
       };
 
       STATE.windows.push(winObj);
       renderWindow(winObj, customMeta);
       focusWindow(winId);
       renderDock();
-      STATE.historyStack.push({ action: 'open', winId });
     }
 
     function renderWindow(win, customMeta) {
       const container = document.getElementById('windowsContainer');
       const winEl = document.createElement('div');
       winEl.id = win.id;
-      winEl.className = `absolute rounded-3xl glass-dark text-white flex flex-col shadow-2xl border border-white/20 overflow-hidden transition-[transform,opacity] duration-200 ${win.maximized ? 'inset-0 !rounded-none !border-0' : ''}`;
+      winEl.className = `absolute rounded-3xl glass-dark text-white flex flex-col shadow-2xl border border-white/20 overflow-hidden transition-[transform,opacity] duration-150 ${win.maximized ? 'inset-0 !rounded-none !border-0' : ''}`;
       winEl.style.left = win.maximized ? '0px' : win.x + 'px';
       winEl.style.top = win.maximized ? '0px' : win.y + 'px';
       winEl.style.width = win.maximized ? '100vw' : win.w + 'px';
@@ -550,11 +593,11 @@
             <i data-lucide="${win.icon}" class="w-4 h-4 text-blue-400"></i>
             <span class="text-xs font-semibold text-white/90">${win.title}</span>
           </div>
-          <!-- 3-Dot iPad Multitasking Controls -->
+          <!-- 3-Dot iPad Traffic Light Controls -->
           <div class="flex items-center gap-1.5">
-            <button onclick="minimizeWindow('${win.id}')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80" title="Minimize"></button>
-            <button onclick="maximizeWindow('${win.id}')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80" title="Expand"></button>
-            <button onclick="closeWindow('${win.id}')" class="w-3 h-3 rounded-full bg-red-500 hover:opacity-80" title="Close"></button>
+            <button onclick="minimizeWindow('${win.id}')" class="w-3 h-3 rounded-full bg-amber-500 hover:opacity-80 transition" title="Minimize"></button>
+            <button onclick="maximizeWindow('${win.id}')" class="w-3 h-3 rounded-full bg-emerald-500 hover:opacity-80 transition" title="Fullscreen"></button>
+            <button onclick="closeWindow('${win.id}')" class="w-3 h-3 rounded-full bg-red-500 hover:opacity-80 transition" title="Close"></button>
           </div>
         </div>
         <!-- App Viewport -->
@@ -578,12 +621,12 @@
       }
 
       switch (key) {
-        case 'drive':
+        case 'files':
           return `
             <div class="flex flex-col h-full gap-3 text-xs">
               <div class="flex flex-wrap gap-2 items-center justify-between pb-2 border-b border-white/10">
                 <div class="flex items-center gap-2">
-                  <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium cursor-pointer flex items-center gap-1.5">
+                  <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold cursor-pointer flex items-center gap-1.5 transition active:scale-95">
                     <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Upload File to Drive
                     <input type="file" class="hidden" onchange="uploadFileToDrive(event, '${winId}')" />
                   </label>
@@ -591,14 +634,12 @@
                     <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Refresh
                   </button>
                 </div>
-                <span class="text-white/60">Target: CloudOS/${STATE.currentUser ? STATE.currentUser.username : 'User'}</span>
+                <span class="text-white/60">CloudOS / ${STATE.currentUser ? STATE.currentUser.username : 'User'}</span>
               </div>
-              <div id="${winId}_drive_list" class="flex-1 overflow-y-auto space-y-2">
-                <!-- Rendered dynamically -->
-              </div>
+              <div id="${winId}_drive_list" class="flex-1 overflow-y-auto space-y-2"></div>
             </div>`;
 
-        case 'word':
+        case 'pages':
           return `
             <div class="flex flex-col h-full bg-white text-slate-900 rounded-2xl overflow-hidden shadow-inner">
               <div class="bg-slate-100 border-b border-slate-200 p-2 flex flex-wrap gap-1.5 text-xs items-center">
@@ -616,36 +657,12 @@
                 <button onclick="downloadWordDoc('${winId}')" class="px-3 py-1 rounded bg-slate-800 text-white hover:bg-slate-700 font-medium">Download</button>
               </div>
               <div id="${winId}_word_body" contenteditable="true" class="flex-1 p-6 overflow-y-auto focus:outline-none text-sm leading-relaxed" style="min-height: 200px;">
-                <h1 class="text-2xl font-bold mb-2">Cloud Document</h1>
-                <p>Welcome to Cloud Docs. You can open real Microsoft Word .docx files, apply formatting, and save directly to your Google Drive folder.</p>
+                <h1 class="text-2xl font-bold mb-2">Untitled Document</h1>
+                <p>Welcome to Pages on CloudOS. Open native Word .docx files or save directly to Google Drive.</p>
               </div>
             </div>`;
 
-        case 'code':
-          return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex items-center justify-between pb-1 border-b border-white/10">
-                <div class="flex gap-2">
-                  <span class="px-3 py-1 bg-white/10 rounded-lg text-blue-400 font-mono">index.html</span>
-                  <button onclick="runCodePreview('${winId}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium text-white flex items-center gap-1">
-                    <i data-lucide="play" class="w-3 h-3"></i> Run Code
-                  </button>
-                </div>
-                <button onclick="saveCodeToDrive('${winId}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-white">Save to Drive</button>
-              </div>
-              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 overflow-hidden">
-                <textarea id="${winId}_code_editor" class="w-full h-full bg-black/50 text-emerald-300 font-mono p-3 rounded-xl border border-white/10 outline-none resize-none text-xs"><!DOCTYPE html>
-<html>
-<body style="font-family:sans-serif;text-align:center;padding:40px;background:#111;color:#fff;">
-  <h1>Hello from CloudOS Code Studio!</h1>
-  <button onclick="alert('Working natively!')" style="padding:10px 20px;border-radius:10px;background:#007AFF;color:#fff;border:0;">Tap Me</button>
-</body>
-</html></textarea>
-                <iframe id="${winId}_code_preview" class="w-full h-full bg-white rounded-xl border-0"></iframe>
-              </div>
-            </div>`;
-
-        case 'browser':
+        case 'safari':
           return `
             <div class="flex flex-col h-full gap-2 text-xs">
               <div class="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
@@ -661,20 +678,66 @@
               </div>
             </div>`;
 
-        case 'youtube':
+        case 'mail':
           return `
-            <div class="flex flex-col h-full gap-2 text-xs">
-              <div class="flex gap-2">
-                <input id="${winId}_yt_input" type="text" placeholder="Paste YouTube link or Video ID (Ad-Free Player)..."
-                       class="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-1.5 text-white outline-none" />
-                <button onclick="loadYouTube('${winId}')" class="px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-xl font-medium text-white">Play</button>
-              </div>
-              <div class="flex-1 bg-black rounded-2xl overflow-hidden flex items-center justify-center">
-                <iframe id="${winId}_yt_frame" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" class="w-full h-full border-0" allowfullscreen></iframe>
+            <div class="flex flex-col h-full gap-3 text-xs">
+              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                <div class="text-sm font-semibold text-white">Compose Cloud Mail</div>
+                <input id="${winId}_mail_to" type="email" placeholder="To: recipient@example.com" class="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-white outline-none" />
+                <input id="${winId}_mail_sub" type="text" placeholder="Subject" class="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-white outline-none" />
+                <textarea id="${winId}_mail_body" rows="6" placeholder="Write your message here..." class="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-white outline-none resize-none"></textarea>
+                <button onclick="sendMailAction('${winId}')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-white transition active:scale-95">Send Email via Google Cloud</button>
               </div>
             </div>`;
 
-        case 'scanner':
+        case 'notes':
+          return `
+            <div class="flex flex-col h-full gap-3 text-xs">
+              <div class="flex gap-2">
+                <input id="${winId}_note_title" type="text" placeholder="Note Title" class="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-white outline-none" />
+                <button onclick="saveNoteAction('${winId}')" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-xl font-semibold text-white">Save Note</button>
+              </div>
+              <textarea id="${winId}_note_content" rows="6" placeholder="Take a note..." class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none resize-none"></textarea>
+              <div id="${winId}_notes_list" class="flex-1 overflow-y-auto space-y-2 mt-2"></div>
+            </div>`;
+
+        case 'reminders':
+          return `
+            <div class="flex flex-col h-full gap-3 text-xs">
+              <div class="flex gap-2">
+                <input id="${winId}_task_in" type="text" placeholder="Add new task..." onkeydown="if(event.key==='Enter') addTask('${winId}')"
+                       class="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500" />
+                <button onclick="addTask('${winId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-white">Add</button>
+              </div>
+              <div id="${winId}_task_list" class="flex-1 overflow-y-auto space-y-2"></div>
+            </div>`;
+
+        case 'calendar':
+          return `
+            <div class="flex flex-col h-full gap-3 text-xs">
+              <div class="text-sm font-semibold text-white flex justify-between items-center pb-2 border-b border-white/10">
+                <span>Calendar & Events</span>
+                <span class="text-blue-400 font-bold">${new Date().toLocaleDateString([], { month: 'long', year: 'numeric' })}</span>
+              </div>
+              <div class="grid grid-cols-7 gap-1 text-center font-bold text-white/60 mb-1">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+              </div>
+              <div id="${winId}_cal_days" class="grid grid-cols-7 gap-1 text-center"></div>
+            </div>`;
+
+        case 'photos':
+          return `
+            <div class="flex flex-col h-full gap-3 text-xs">
+              <div class="flex justify-between items-center pb-2 border-b border-white/10">
+                <span class="font-semibold text-white">Photo Library</span>
+                <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium cursor-pointer">
+                  Import Photo <input type="file" accept="image/*" class="hidden" onchange="importPhotoToDrive(event, '${winId}')" />
+                </label>
+              </div>
+              <div id="${winId}_photos_grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 flex-1 overflow-y-auto p-1"></div>
+            </div>`;
+
+        case 'camera':
           return `
             <div class="flex flex-col h-full gap-3 text-xs">
               <div class="flex flex-wrap gap-2 items-center justify-between">
@@ -682,7 +745,7 @@
                   <label class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium cursor-pointer">
                     Capture / Select Image <input type="file" accept="image/*" class="hidden" onchange="processScanImage(event, '${winId}')" />
                   </label>
-                  <button onclick="downloadScan('${winId}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium">Download Document</button>
+                  <button onclick="downloadScan('${winId}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium">Download Doc</button>
                 </div>
                 <div class="flex gap-3 items-center text-white/80">
                   <span>Contrast: <input id="${winId}_contrast" type="range" min="50" max="250" value="140" oninput="applyScanFilter('${winId}')" /></span>
@@ -694,40 +757,117 @@
               </div>
             </div>`;
 
-        case 'installer':
+        case 'music':
           return `
-            <div class="p-4 space-y-4 max-w-lg mx-auto text-xs">
-              <div class="text-sm font-semibold text-white">Add New Application to iPadOS</div>
-              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
-                <div class="font-medium text-blue-400">Method 1: Install from Web App / PWA URL</div>
-                <input id="${winId}_inst_url" type="url" placeholder="https://example.com/app" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
-                <input id="${winId}_inst_name_url" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
-                <button onclick="installAppUrl('${winId}')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-white">Pin App to iPad</button>
+            <div class="flex flex-col h-full gap-3 text-xs text-center justify-center items-center p-6">
+              <div class="w-32 h-32 rounded-3xl bg-gradient-to-tr from-pink-500 to-rose-600 flex items-center justify-center shadow-2xl mb-4">
+                <i data-lucide="music" class="w-16 h-16 text-white"></i>
               </div>
-              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
-                <div class="font-medium text-emerald-400">Method 2: Upload Application Code (.html, .js)</div>
-                <input id="${winId}_inst_name_file" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
-                <input id="${winId}_inst_file" type="file" accept=".html,.js,.txt" class="text-white/70" />
-                <button onclick="installAppCode('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-white">Upload Code & Install</button>
+              <div class="text-base font-bold text-white">Apple Music Player</div>
+              <div class="text-white/60 mb-4">Local audio & cloud audio streaming ready</div>
+              <input type="file" accept="audio/*" onchange="playAudioFile(event, '${winId}')" class="text-xs text-white/70" />
+              <audio id="${winId}_audio" controls class="w-full max-w-xs mt-3"></audio>
+            </div>`;
+
+        case 'videos':
+          return `
+            <div class="flex flex-col h-full gap-2 text-xs">
+              <div class="flex justify-between items-center">
+                <label class="px-3 py-1.5 bg-blue-600 rounded-xl cursor-pointer font-medium">
+                  Load Video File <input type="file" accept="video/*" class="hidden" onchange="loadVideoFile(event, '${winId}')" />
+                </label>
+              </div>
+              <div class="flex-1 bg-black rounded-2xl overflow-hidden flex items-center justify-center">
+                <video id="${winId}_video" controls class="max-h-full max-w-full rounded-xl"></video>
               </div>
             </div>`;
 
-        case 'tasks':
+        case 'youtube':
+          return `
+            <div class="flex flex-col h-full gap-2 text-xs">
+              <div class="flex gap-2">
+                <input id="${winId}_yt_input" type="text" placeholder="Paste YouTube link or Video ID..."
+                       class="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-1.5 text-white outline-none" />
+                <button onclick="loadYouTube('${winId}')" class="px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded-xl font-medium text-white">Play</button>
+              </div>
+              <div class="flex-1 bg-black rounded-2xl overflow-hidden flex items-center justify-center">
+                <iframe id="${winId}_yt_frame" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" class="w-full h-full border-0" allowfullscreen></iframe>
+              </div>
+            </div>`;
+
+        case 'facetime':
           return `
             <div class="flex flex-col h-full gap-3 text-xs">
-              <div class="flex gap-2">
-                <input id="${winId}_task_in" type="text" placeholder="Add new task or reminder..." onkeydown="if(event.key==='Enter') addTask('${winId}')"
-                       class="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500" />
-                <button onclick="addTask('${winId}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-white">Add</button>
+              <div class="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                <div class="font-semibold text-white">Add Contact</div>
+                <input id="${winId}_ct_name" type="text" placeholder="Name" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <input id="${winId}_ct_phone" type="text" placeholder="Phone" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <button onclick="addContactAction('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-xl text-white">Save Contact</button>
               </div>
-              <div id="${winId}_task_list" class="flex-1 overflow-y-auto space-y-2">
-                <!-- Rendered live -->
+              <div id="${winId}_ct_list" class="flex-1 overflow-y-auto space-y-2"></div>
+            </div>`;
+
+        case 'maps':
+          return `
+            <div class="flex flex-col h-full gap-2 text-xs">
+              <input type="text" placeholder="Search location..." onkeydown="if(event.key==='Enter') searchMap(this.value, '${winId}')"
+                     class="w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-white outline-none" />
+              <div class="flex-1 bg-slate-900 rounded-2xl overflow-hidden">
+                <iframe id="${winId}_map_frame" class="w-full h-full border-0" src="https://maps.google.com/maps?q=Cupertino&t=&z=13&ie=UTF8&iwloc=&output=embed"></iframe>
+              </div>
+            </div>`;
+
+        case 'weather':
+          return `
+            <div class="flex flex-col h-full gap-4 text-center justify-center items-center p-6 text-white">
+              <div class="text-3xl font-bold">Cupertino</div>
+              <div class="text-6xl font-light">72°F</div>
+              <div class="text-sm text-white/70">Partly Cloudy • H:76° L:55°</div>
+              <div class="grid grid-cols-5 gap-3 mt-6 w-full max-w-sm">
+                <div class="p-2.5 rounded-2xl bg-white/10"><div>Mon</div><div class="font-bold">72°</div></div>
+                <div class="p-2.5 rounded-2xl bg-white/10"><div>Tue</div><div class="font-bold">75°</div></div>
+                <div class="p-2.5 rounded-2xl bg-white/10"><div>Wed</div><div class="font-bold">70°</div></div>
+                <div class="p-2.5 rounded-2xl bg-white/10"><div>Thu</div><div class="font-bold">68°</div></div>
+                <div class="p-2.5 rounded-2xl bg-white/10"><div>Fri</div><div class="font-bold">71°</div></div>
+              </div>
+            </div>`;
+
+        case 'stocks':
+          return `
+            <div class="flex flex-col h-full gap-3 text-xs">
+              <div class="text-sm font-semibold text-white pb-2 border-b border-white/10">Market Watchlist</div>
+              <div class="space-y-2">
+                <div class="p-3 bg-white/5 rounded-2xl flex justify-between items-center"><div><div class="font-bold">AAPL</div><div class="text-white/60">Apple Inc.</div></div><div class="text-emerald-400 font-bold">$228.45 (+1.4%)</div></div>
+                <div class="p-3 bg-white/5 rounded-2xl flex justify-between items-center"><div><div class="font-bold">GOOGL</div><div class="text-white/60">Alphabet Inc.</div></div><div class="text-emerald-400 font-bold">$182.10 (+0.8%)</div></div>
+                <div class="p-3 bg-white/5 rounded-2xl flex justify-between items-center"><div><div class="font-bold">MSFT</div><div class="text-white/60">Microsoft Corp.</div></div><div class="text-emerald-400 font-bold">$440.80 (+1.1%)</div></div>
+              </div>
+            </div>`;
+
+        case 'voice':
+          return `
+            <div class="flex flex-col h-full gap-4 text-center justify-center items-center p-6 text-white text-xs">
+              <div class="text-base font-bold">Voice Memos</div>
+              <button id="${winId}_rec_btn" onclick="toggleVoiceRecording('${winId}')" class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 shadow-xl flex items-center justify-center active:scale-95 transition">
+                <i data-lucide="mic" class="w-8 h-8 text-white"></i>
+              </button>
+              <div id="${winId}_rec_status" class="text-white/60">Tap red button to record voice memo</div>
+              <audio id="${winId}_rec_audio" controls class="w-full max-w-xs hidden mt-3"></audio>
+            </div>`;
+
+        case 'clock':
+          return `
+            <div class="flex flex-col h-full gap-3 text-xs text-center justify-center items-center p-6 text-white">
+              <div class="text-4xl font-light font-mono mb-2" id="${winId}_timer_disp">00:00:00</div>
+              <div class="flex gap-2">
+                <button onclick="startStopwatch('${winId}')" class="px-4 py-2 bg-emerald-600 rounded-xl font-bold">Start</button>
+                <button onclick="stopStopwatch('${winId}')" class="px-4 py-2 bg-red-600 rounded-xl font-bold">Stop</button>
+                <button onclick="resetStopwatch('${winId}')" class="px-4 py-2 bg-slate-700 rounded-xl font-bold">Reset</button>
               </div>
             </div>`;
 
         case 'calculator':
           return `
-            <div class="max-w-xs mx-auto p-4 bg-slate-800 rounded-3xl flex flex-col gap-3 shadow-2xl">
+            <div class="max-w-xs mx-auto p-4 bg-slate-800 rounded-3xl flex flex-col gap-2 shadow-2xl">
               <input id="${winId}_calc_scr" readonly type="text" value="0" class="w-full bg-slate-950 text-right p-4 text-2xl font-mono text-white rounded-2xl border border-slate-700" />
               <div class="grid grid-cols-4 gap-2 text-sm font-semibold text-white">
                 <button onclick="calcPress('${winId}','C')" class="p-3 bg-red-600 rounded-2xl">C</button>
@@ -750,21 +890,98 @@
               </div>
             </div>`;
 
+        case 'xcode':
+          return `
+            <div class="flex flex-col h-full gap-2 text-xs">
+              <div class="flex items-center justify-between pb-1 border-b border-white/10">
+                <span class="text-blue-400 font-mono">App.html</span>
+                <div class="flex gap-2">
+                  <button onclick="runXcode('${winId}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium flex items-center gap-1">
+                    <i data-lucide="play" class="w-3 h-3"></i> Run Project
+                  </button>
+                  <button onclick="saveXcodeToDrive('${winId}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium">Save to Drive</button>
+                </div>
+              </div>
+              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 overflow-hidden">
+                <textarea id="${winId}_xc_editor" class="w-full h-full bg-black/60 text-emerald-300 font-mono p-3 rounded-xl border border-white/10 outline-none resize-none text-xs"><!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;text-align:center;padding:50px;background:#18181b;color:#fff;">
+  <h2>Running in Xcode Studio</h2>
+  <p>Realtime in-browser sandbox runner.</p>
+</body>
+</html></textarea>
+                <iframe id="${winId}_xc_preview" class="w-full h-full bg-white rounded-xl border-0"></iframe>
+              </div>
+            </div>`;
+
+        case 'terminal':
+          return `
+            <div class="flex flex-col h-full bg-black text-green-400 font-mono p-3 rounded-2xl text-xs overflow-hidden">
+              <div id="${winId}_term_out" class="flex-1 overflow-y-auto space-y-1">
+                <div>CloudOS Darwin Kernel Version 23.0.0; root:xnu-10002/RELEASE_ARM64_T8103</div>
+                <div>Type 'help' for active system commands.</div>
+              </div>
+              <div class="flex items-center gap-1 pt-2 border-t border-green-500/20">
+                <span>user@cloud-ipad:~$</span>
+                <input id="${winId}_term_in" type="text" onkeydown="if(event.key==='Enter') runTerminalCmd(this, '${winId}')"
+                       class="flex-1 bg-transparent text-green-400 outline-none" autofocus />
+              </div>
+            </div>`;
+
+        case 'appstore':
+          return `
+            <div class="p-4 space-y-4 max-w-lg mx-auto text-xs">
+              <div class="text-sm font-semibold text-white">App Store & Custom Application Installer</div>
+              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                <div class="font-medium text-blue-400">Install via Web App URL / PWA</div>
+                <input id="${winId}_as_url" type="url" placeholder="https://example.com" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <input id="${winId}_as_name_url" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <button onclick="installAppStoreUrl('${winId}')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-white">Install Web App</button>
+              </div>
+              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                <div class="font-medium text-emerald-400">Install via Code Upload (.html, .js)</div>
+                <input id="${winId}_as_name_file" type="text" placeholder="Application Title" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <input id="${winId}_as_file" type="file" accept=".html,.js,.txt" class="text-white/70" />
+                <button onclick="installAppStoreCode('${winId}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-white">Upload & Deploy</button>
+              </div>
+            </div>`;
+
+        case 'settings':
+          return `
+            <div class="p-4 max-w-xl mx-auto space-y-4 text-xs">
+              <div class="text-sm font-semibold text-white">System Settings</div>
+              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                <div class="font-medium text-white/80">Desktop Wallpaper</div>
+                <div class="flex gap-2">
+                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Flow</button>
+                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Nature</button>
+                  <button onclick="changeWallpaper('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2560')" class="px-3 py-1.5 bg-white/10 rounded-lg hover:bg-white/20">Mountain</button>
+                </div>
+              </div>
+              <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                <div class="font-medium text-white/80">Change Password</div>
+                <input id="${winId}_old_pass" type="password" placeholder="Current Password" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <input id="${winId}_new_pass" type="password" placeholder="New Password" class="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-white" />
+                <button onclick="updateAccountPassword('${winId}')" class="px-4 py-1.5 bg-blue-600 rounded-xl text-white font-medium">Update Password</button>
+              </div>
+              <button onclick="handleLogout()" class="w-full py-2.5 bg-red-600/80 hover:bg-red-600 text-white rounded-xl font-bold">Sign Out</button>
+            </div>`;
+
         default:
-          return `<div class="p-4 text-xs text-white/70">Application is running and synced.</div>`;
+          return `<div class="p-4 text-xs text-white/70">Application initialized.</div>`;
       }
     }
 
-    /* Drive Files System */
+    /* Drive Files Operations */
     async function refreshDriveView(winId) {
-      if (!STATE.currentUser) return alert("Sign in first.");
+      if (!STATE.currentUser) return alert("Please sign in first.");
       const listEl = document.getElementById(winId + '_drive_list');
-      listEl.innerHTML = '<div class="text-white/60 p-2">Loading Google Drive folder...</div>';
+      listEl.innerHTML = '<div class="text-white/60 p-2">Connecting to Google Drive...</div>';
       try {
         const res = await apiCall('drive_list', { folderId: STATE.currentUser.driveFolderId });
         listEl.innerHTML = '';
         if (!res.files || res.files.length === 0) {
-          listEl.innerHTML = '<div class="text-white/50 p-4 text-center">No files in your cloud drive yet. Upload one above!</div>';
+          listEl.innerHTML = '<div class="text-white/50 p-4 text-center">Your cloud folder is empty. Upload a file above!</div>';
           return;
         }
         res.files.forEach(f => {
@@ -804,22 +1021,22 @@
             mimeType: file.type,
             base64Content: base64
           });
-          alert("File successfully saved to your Google Drive!");
+          alert("File stored in Google Drive successfully!");
           refreshDriveView(winId);
-        } catch (err) { alert("Drive upload error: " + err.message); }
+        } catch (err) { alert("Drive error: " + err.message); }
       };
       reader.readAsDataURL(file);
     }
 
     async function deleteDriveFile(fileId, winId) {
-      if (!confirm("Delete this file from Google Drive?")) return;
+      if (!confirm("Delete file permanently from Google Drive?")) return;
       try {
         await apiCall('drive_delete', { fileId });
         refreshDriveView(winId);
       } catch (e) { alert(e.message); }
     }
 
-    /* Mammoth Word (.docx) Parsing & Saving */
+    /* Word / Pages (.docx) Parsing & Saving */
     function parseDocx(event, winId) {
       const file = event.target.files[0];
       if (!file) return;
@@ -843,7 +1060,7 @@
           mimeType: 'text/html',
           base64Content: base64
         });
-        alert("Document saved to your Google Drive folder!");
+        alert("Document saved to your Google Drive!");
       } catch (e) { alert("Error: " + e.message); }
     }
 
@@ -856,56 +1073,31 @@
       a.click();
     }
 
-    /* Code Studio Execution */
-    function runCodePreview(winId) {
-      const code = document.getElementById(winId + '_code_editor').value;
-      const frame = document.getElementById(winId + '_code_preview');
-      frame.srcdoc = code;
-    }
-
-    async function saveCodeToDrive(winId) {
-      if (!STATE.currentUser) return alert("Sign in first.");
-      const code = document.getElementById(winId + '_code_editor').value;
-      const base64 = btoa(unescape(encodeURIComponent(code)));
+    /* Mail Sending Action */
+    async function sendMailAction(winId) {
+      const to = document.getElementById(winId + '_mail_to').value.trim();
+      const subject = document.getElementById(winId + '_mail_sub').value.trim();
+      const body = document.getElementById(winId + '_mail_body').value.trim();
+      if (!to) return alert("Enter recipient email.");
       try {
-        await apiCall('drive_upload', {
-          folderId: STATE.currentUser.driveFolderId,
-          fileName: 'Code_' + Date.now() + '.html',
-          mimeType: 'text/html',
-          base64Content: base64
-        });
-        alert("Code file stored in Google Drive!");
-      } catch (e) { alert(e.message); }
+        const res = await apiCall('send_mail', { to, subject, body });
+        alert(res.message);
+      } catch(e) { alert("Mail error: " + e.message); }
     }
 
-    /* App Installer Engine */
-    async function installAppUrl(winId) {
-      const url = document.getElementById(winId + '_inst_url').value.trim();
-      const name = document.getElementById(winId + '_inst_name_url').value.trim() || 'App';
-      if (!url) return alert("Enter URL");
-      try {
-        await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'compass', type: 'url', codeOrUrl: url });
-        syncCloudData();
-        alert("App installed on your iPad home screen!");
-      } catch (e) { alert(e.message); }
+    /* Notes Action */
+    async function saveNoteAction(winId) {
+      const title = document.getElementById(winId + '_note_title').value.trim() || 'Untitled';
+      const content = document.getElementById(winId + '_note_content').value.trim();
+      if (!content) return alert("Note content is empty.");
+      STATE.notes.unshift({ id: Date.now().toString(), Title: title, Content: content, Color: 'bg-amber-100' });
+      if (STATE.currentUser) {
+        await apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Notes', items: STATE.notes });
+      }
+      alert("Note saved!");
     }
 
-    async function installAppCode(winId) {
-      const fileInput = document.getElementById(winId + '_inst_file');
-      const name = document.getElementById(winId + '_inst_name_file').value.trim() || 'Uploaded App';
-      if (!fileInput.files[0]) return alert("Choose a code file");
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        try {
-          await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'code', type: 'code', codeOrUrl: e.target.result });
-          syncCloudData();
-          alert("Application installed successfully!");
-        } catch (err) { alert(err.message); }
-      };
-      reader.readAsText(fileInput.files[0]);
-    }
-
-    /* Tasks / To-Do App and Live Widget */
+    /* Tasks Action */
     function renderWidgetTasks() {
       const list = document.getElementById('widgetTaskList');
       list.innerHTML = '';
@@ -934,6 +1126,56 @@
       STATE.tasks[idx].Completed = STATE.tasks[idx].Completed === 'true' ? 'false' : 'true';
       renderWidgetTasks();
       if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.tasks });
+    }
+
+    function addTask(winId) {
+      const val = document.getElementById(winId + '_task_in').value.trim();
+      if (!val) return;
+      STATE.tasks.unshift({ id: Date.now().toString(), Task: val, Completed: 'false' });
+      document.getElementById(winId + '_task_in').value = '';
+      renderWidgetTasks();
+      if (STATE.currentUser) apiCall('sync_sheet', { username: STATE.currentUser.username, sheetName: 'Tasks', items: STATE.tasks });
+    }
+
+    /* Xcode Execution */
+    function runXcode(winId) {
+      const code = document.getElementById(winId + '_xc_editor').value;
+      document.getElementById(winId + '_xc_preview').srcdoc = code;
+    }
+
+    async function saveXcodeToDrive(winId) {
+      const code = document.getElementById(winId + '_xc_editor').value;
+      const base64 = btoa(unescape(encodeURIComponent(code)));
+      await apiCall('drive_upload', {
+        folderId: STATE.currentUser.driveFolderId,
+        fileName: 'Project_' + Date.now() + '.html',
+        mimeType: 'text/html',
+        base64Content: base64
+      });
+      alert("Xcode code saved to Google Drive!");
+    }
+
+    /* App Store Installer */
+    async function installAppStoreUrl(winId) {
+      const url = document.getElementById(winId + '_as_url').value.trim();
+      const name = document.getElementById(winId + '_as_name_url').value.trim() || 'PWA App';
+      if (!url) return alert("Enter URL");
+      await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'compass', type: 'url', codeOrUrl: url });
+      syncCloudData();
+      alert("App pinned to iPad home screen!");
+    }
+
+    async function installAppStoreCode(winId) {
+      const fileInput = document.getElementById(winId + '_as_file');
+      const name = document.getElementById(winId + '_as_name_file').value.trim() || 'Uploaded App';
+      if (!fileInput.files[0]) return alert("Select file");
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        await apiCall('save_app', { username: STATE.currentUser.username, name, icon: 'code', type: 'code', codeOrUrl: e.target.result });
+        syncCloudData();
+        alert("App uploaded & pinned to home screen!");
+      };
+      reader.readAsText(fileInput.files[0]);
     }
 
     /* Scanner Canvas */
@@ -966,7 +1208,17 @@
       a.click();
     }
 
-    /* YouTube Loader */
+    /* Media Playback */
+    function playAudioFile(e, winId) {
+      const file = e.target.files[0];
+      if (file) document.getElementById(winId + '_audio').src = URL.createObjectURL(file);
+    }
+
+    function loadVideoFile(e, winId) {
+      const file = e.target.files[0];
+      if (file) document.getElementById(winId + '_video').src = URL.createObjectURL(file);
+    }
+
     function loadYouTube(winId) {
       const val = document.getElementById(winId + '_yt_input').value.trim();
       let id = val;
@@ -982,8 +1234,33 @@
     }
 
     function browserNav(winId, action) {
-      const frame = document.getElementById(winId + '_browser_frame');
-      if (action === 'refresh') frame.src = frame.src;
+      const f = document.getElementById(winId + '_browser_frame');
+      if (action === 'refresh') f.src = f.src;
+    }
+
+    /* Terminal Runner */
+    function runTerminalCmd(input, winId) {
+      const cmd = input.value.trim();
+      input.value = '';
+      const out = document.getElementById(winId + '_term_out');
+      const line = document.createElement('div');
+      line.innerText = "$ " + cmd;
+      out.appendChild(line);
+
+      let resp = "";
+      if (cmd === 'help') resp = "Commands: help, uname, clear, ls, date, whoami";
+      else if (cmd === 'clear') { out.innerHTML = ''; return; }
+      else if (cmd === 'uname') resp = "Darwin iPadOS 23.0.0 ARM64";
+      else if (cmd === 'whoami') resp = STATE.currentUser ? STATE.currentUser.username : "guest";
+      else if (cmd === 'ls') resp = "Applications  Documents  Photos  Library";
+      else if (cmd === 'date') resp = new Date().toString();
+      else resp = "command not found: " + cmd;
+
+      const rLine = document.createElement('div');
+      rLine.className = "text-green-300";
+      rLine.innerText = resp;
+      out.appendChild(rLine);
+      out.scrollTop = out.scrollHeight;
     }
 
     /* Window Controls */
@@ -1116,7 +1393,7 @@
       document.execCommand('insertText', false, k);
     }
 
-    /* Precision Virtual Trackpad */
+    /* Virtual Trackpad */
     function initTrackpad() {
       const area = document.getElementById('trackpadArea');
       const cursor = document.getElementById('virtualCursor');
@@ -1164,7 +1441,7 @@
       tp.classList.toggle('rounded-2xl');
     }
 
-    /* iPad Control Center & Spotlight */
+    /* Spotlight & Control Center */
     function toggleControlCenter() {
       document.getElementById('controlCenter').classList.toggle('hidden');
     }
@@ -1179,11 +1456,11 @@
       const res = document.getElementById('spotlightResults');
       res.innerHTML = '';
       if (!q.trim()) return;
-      Object.keys(APPS).forEach(k => {
-        if (APPS[k].name.toLowerCase().includes(q.toLowerCase())) {
+      Object.keys(DEFAULT_IOS_APPS).forEach(k => {
+        if (DEFAULT_IOS_APPS[k].name.toLowerCase().includes(q.toLowerCase())) {
           const row = document.createElement('div');
           row.className = "p-2 rounded-xl bg-white/10 hover:bg-blue-600 flex items-center gap-2 cursor-pointer";
-          row.innerHTML = `<i data-lucide="${APPS[k].icon}" class="w-4 h-4"></i><span>${APPS[k].name}</span>`;
+          row.innerHTML = `<i data-lucide="${DEFAULT_IOS_APPS[k].icon}" class="w-4 h-4"></i><span>${DEFAULT_IOS_APPS[k].name}</span>`;
           row.onclick = () => { launchApp(k); toggleSpotlight(); };
           res.appendChild(row);
         }
@@ -1195,13 +1472,19 @@
       document.getElementById('dimmerOverlay').style.opacity = (val / 100).toString();
     }
 
-    function adjustVolume(val) {
-      // System audio level placeholder
-    }
-
     function toggleFullscreen() {
       if (!document.fullscreenElement) document.documentElement.requestFullscreen();
       else document.exitFullscreen();
+    }
+
+    function changeWallpaper(url) {
+      document.getElementById('desktop').style.backgroundImage = `url('${url}')`;
+    }
+
+    function handleLogout() {
+      sessionStorage.removeItem('cloudos_user');
+      STATE.currentUser = null;
+      document.getElementById('authGate').classList.remove('hidden');
     }
 
     function calcPress(winId, val) {
@@ -1216,9 +1499,7 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function windowAppBack(winId) {
-      // In-app back navigator
-    }
+    function windowAppBack(winId) {}
   </script>
 </body>
 </html>
